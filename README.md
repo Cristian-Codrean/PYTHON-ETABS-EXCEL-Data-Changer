@@ -18,51 +18,48 @@
 - `comtypes` - Conexiune cu ETABS API
 - `os`, `sys` - Operațiuni sistem
 - `shutil` - Operațiuni fișiere
+- `xlwings` - Operațiuni cu fisiere EXCEL
 
-### Programe Licențiate:
+## Programe Licențiate:
 - **ETABS** - Software de analiză structurală (licență necesară)
 - **Microsoft Excel** - Pentru rapoarte (licență necesară)
 
 ## Schema Aplicației
+```text
 BEAM-DESIGN-BY-CCO/
-│
-├── run.py # Punct de intrare principal
-│
+├── run.py
 ├── gui/
 │ ├── main_window.py
 │ ├── startup_window.py
 │ ├── alternative_window.py
 │ └── widgets.py
-│
 ├── etabs_api/
-│ ├── onnection.py
+│ ├── connection.py
 │ └── operations.py
-│
 ├── excel/
 │ └── operations.py
-│
 └── db/
 └── operations.py
-
+```
 
 ## Instalare și Utilizare
-** Cerințe Preliminare:
+### I Cerințe Preliminare:
 1. Python 3.8 sau superior
 2. ETABS instalat și licențiat
 3. Microsoft Excel (pentru rapoarte)
 
-** Instalare:
-```bash
-# Clonează repository-ul
+### II Instalare:
+
+### Clonează repository-ul
 git clone https://github.com/Cristian-Codrean/PYTHON-ETABS-EXCEL-Data-Changer.git
 
-# Intră în directorul proiectului
+#### Intră în directorul proiectului
 cd BEAM-DESIGN-BY-CCO
 
-# Instalează dependențele
+### Instalează dependențele
 pip install comtypes
 
-## Utilizare:
+### Utilizare:
 Pornește ETABS și deschide un model structural
 Rulează aplicația: python run.py
 Selectează "Creează o bază de date nouă"
@@ -73,9 +70,9 @@ Configurează scenariile (Infrastructură/Suprastructură)
 Selectează grinzile în ETABS
 Generează raportul Excel
 
-##Drepturi de Autor și Disclaimer
+### Drepturi de autor si disclaimer:
 Drepturi de Autor:
-© 2024 BEAM DESIGN BY CCO. Toate drepturile rezervate.
+© 2025 BEAM DESIGN BY CCO. Toate drepturile rezervate.
 
 Disclaimer Important:
 Această aplicație este un proiect independent și NU este afiliată, autorizată, sponsorizată sau aprobată în vreun fel de:
