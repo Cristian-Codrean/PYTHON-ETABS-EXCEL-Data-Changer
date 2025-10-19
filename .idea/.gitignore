@@ -1,0 +1,10 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+.idea
+__pycache__
+db/__pycache__
+etabs_api/__pycache__
+excel/__pycache__
+gui/__pycache__
+
