@@ -166,46 +166,48 @@ class SimpleSummaryPopup:
         table_frame.pack(fill='both', expand=True, padx=5, pady=5)
 
         # Create treeview for simple beam table
-        columns = ('Group', 'Order', 'UniqueName', 'Story', 'SectionName', 'SectionProps', 'Material', 'Length',
-                   'Rezistente', 'Etaj', 'DCL', 'DCM', 'DCH', 'Secundare', 'DirX', 'DirY')
+        columns = ('Group', 'Order', 'UniqueName', 'Story', 'SectionName', 'Material', 'Length',
+                   'Rezistente', 'Etaj', 'DCL', 'DCM', 'DCH', 'Secundare', 'DirX', 'DirY', 'CombUpper', 'CombLower')
 
         tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=20)
 
         # Configure columns
         column_widths = {
             'Group': 60, 'Order': 60, 'UniqueName': 120, 'Story': 80,
-            'SectionName': 120, 'SectionProps': 150, 'Material': 80, 'Length': 80,
-            'Rezistente': 100, 'Etaj': 80, 'DCL': 50, 'DCM': 50, 'DCH': 50,
-            'Secundare': 80, 'DirX': 50, 'DirY': 50
+            'SectionName': 120, 'Material': 100, 'Length': 80,
+            'Rezistente': 100, 'Etaj': 80,
+            'DCL': 50, 'DCM': 50, 'DCH': 50, 'Secundare': 80,
+            'DirX': 50, 'DirY': 50, 'CombUpper': 150, 'CombLower': 150
         }
 
         for col in columns:
             tree.heading(col, text=col)
             tree.column(col, width=column_widths.get(col, 100))
 
-        # Add data
-        settings = scenario_data['settings']
-        button_states = settings['button_states']
-
+        # Add data - iterate through each group and its settings
         for group_info in scenario_data['beam_groups']:
-            for beam in group_info['beams']:
+            group_settings = group_info.get('settings', {})
+            button_states = group_settings.get('button_states', {})
+
+            for beam_idx, beam in enumerate(group_info['beams'], 1):
                 tree.insert('', 'end', values=(
                     group_info['group_number'],
-                    group_info['beams'].index(beam) + 1,
+                    beam_idx,  # Order within group
                     beam['unique_name'],
                     beam['story'],
                     beam['section_name'],
-                    beam.get('section_props', 'N/A'),
-                    beam.get('material', 'Concrete'),
+                    beam['material'],
                     f"{beam['length']:.3f}",
-                    settings['rezistente_type'] or "Not set",
-                    settings['etaj'] or "Not set",
+                    group_settings.get('rezistente_type', 'N/A'),
+                    group_settings.get('etaj', 'N/A'),
                     "✓" if button_states.get('DCL') else "✗",
                     "✓" if button_states.get('DCM') else "✗",
                     "✓" if button_states.get('DCH') else "✗",
                     "✓" if button_states.get('Secundare') else "✗",
                     "✓" if button_states.get('Dir X') else "✗",
-                    "✓" if button_states.get('Dir Y') else "✗"
+                    "✓" if button_states.get('Dir Y') else "✗",
+                    group_settings.get('selected_combinations_upper', 'N/A'),
+                    group_settings.get('selected_combinations_lower', 'N/A')
                 ))
 
         # Add scrollbars
@@ -217,3 +219,10 @@ class SimpleSummaryPopup:
         tree.pack(side='left', fill='both', expand=True)
         v_scrollbar.pack(side='right', fill='y')
         h_scrollbar.pack(side='bottom', fill='x')
+
+        # Add summary info at the bottom
+        summary_frame = ttk.Frame(tab)
+        summary_frame.pack(fill='x', padx=5, pady=5)
+
+        ttk.Label(summary_frame, text=f"Total Grupuri: {scenario_data['group_count']}").pack(side='left', padx=10)
+        ttk.Label(summary_frame, text=f"Total Grinzi: {scenario_data['total_beams']}").pack(side='left', padx=10)

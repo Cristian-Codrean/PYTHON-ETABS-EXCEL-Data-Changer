@@ -1,5 +1,7 @@
 # Importă funcția de conexiune
 from etabs_api.connection import get_sap_model
+# Get sap_model at module level for all functions to use
+sap_model = get_sap_model()
 
 def hide_specific_frames(frame_list):
     """Ascunde frame-urile specificate folosind funcția Make Objects Invisible din ETABS"""
@@ -136,35 +138,39 @@ def get_frame_guid(frame_name):
 
 def get_label_and_story(name):
     """Returnează label și story de la inputul (unique name) ca o listă de stringuri"""
-    sap_model = get_sap_model()
     try:
         result = sap_model.FrameObj.GetLabelFromName(name)
-        return result[0:2] if result else [None, None]
+        if result and len(result) >= 2:
+            return result[0:2]
+        else:
+            print(f"⮽⮽ Rezultat neașteptat GetLabelFromName pentru {name}: {result}")
+            return ["N/A", "N/A"]
     except Exception as e:
-        print(f"⮽⮽ Eroare la obținerea label și story: {e}")
-        return [None, None]
+        print(f"⮽⮽ Eroare la obținerea label și story pentru {name}: {e}")
+        return ["N/A", "N/A"]
 
 
-def get_section_name(name):
-    """Returnează numele secțiunii pentru un frame"""
-    SapModel = get_sap_model()
-    result = SapModel.FrameObj.GetSection(name)
-    return result[1] if result and result[0] == 0 else None
+def get_section_name(frame_name):
+    """Obține numele secțiunii pentru o grindă"""
+    try:
+        ret = sap_model.FrameObj.GetSection(frame_name)
+        print(f"-- GetSection pentru {frame_name}: ret={ret}")
 
-
-def get_section_name(name):
-    SapModel = get_sap_model()
-    result = SapModel.FrameObj.GetSection(name)
-    return result[1] if result and result[0] == 0 else None
-
-
-def get_prop_modifiers(name):
-    SapModel = get_sap_model()
-    result = SapModel.FrameObj.GetModifiers(name)
-    if not result or result[0] != 0:
-        return None
-    keys = ["Area", "As2", "As3", "Torsion", "I22", "I33", "Mass", "Weight"]
-    return dict(zip(keys, result[1]))
+        if ret[0] == 0:
+            section_name = ret[1]
+            print(f"-- Secțiune obținută pentru {frame_name}: {section_name}")
+            return section_name
+        else:
+            # În ETABS, uneori returnează numele secțiunii direct în ret[0]
+            if isinstance(ret[0], str) and ret[0]:
+                print(f"-- Secțiune obținută (alternativ) pentru {frame_name}: {ret[0]}")
+                return ret[0]
+            else:
+                print(f"⮽⮽ Eroare GetSection pentru {frame_name}: cod {ret[0]}")
+                return "N/A"
+    except Exception as e:
+        print(f"⮽⮽ Eroare la obținerea numelui secțiunii pentru {frame_name}: {e}")
+        return "N/A"
 
 def get_prop_modifiers(name):
     SapModel = get_sap_model()
@@ -256,3 +262,129 @@ def get_groups(name):
     if ret != 0:
         return None
     return {"Count": number, "Names": group_names}
+
+
+def get_section_material(frame_name):
+    """Obține numele materialului pentru secțiunea unei grinzi"""
+    try:
+        # Obține numele secțiunii
+        section_name = get_section_name(frame_name)
+        if section_name == "N/A":
+            return "N/A"
+
+        print(f"-- Obținere material pentru secțiunea: {section_name}")
+
+        # Încearcă să obțină materialul direct folosind GetMaterial
+        ret = sap_model.PropFrame.GetMaterial(section_name)
+        print(f"-- GetMaterial pentru {section_name}: ret={ret}")
+
+        if ret[0] == 0:
+            material_name = ret[1]
+            print(f"-- Material obținut direct: {material_name}")
+            return material_name
+
+        # Dacă direct nu funcționează, încearcă pentru diferite tipuri de secțiuni
+        ret = sap_model.PropFrame.GetRectangle(section_name)
+        if ret[0] == 0:
+            material_name = ret[3]
+            print(f"-- Material pentru secțiune rectangulară: {material_name}")
+            return material_name
+
+        ret = sap_model.PropFrame.GetISection(section_name)
+        if ret[0] == 0:
+            material_name = ret[8]
+            print(f"-- Material pentru secțiune I: {material_name}")
+            return material_name
+
+        ret = sap_model.PropFrame.GetTube(section_name)
+        if ret[0] == 0:
+            material_name = ret[6]
+            print(f"-- Material pentru secțiune tub: {material_name}")
+            return material_name
+
+        ret = sap_model.PropFrame.GetCircle(section_name)
+        if ret[0] == 0:
+            material_name = ret[3]
+            print(f"-- Material pentru secțiune circulară: {material_name}")
+            return material_name
+
+        print(f"⮽⮽ Nu s-a putut determina materialul pentru secțiunea {section_name}")
+        return "N/A"
+
+    except Exception as e:
+        print(f"⮽⮽ Eroare la obținerea materialului pentru {frame_name}: {e}")
+        return "N/A"
+
+
+def get_frame_length(frame_name):
+    """Obține lungimea unei grinzi"""
+    try:
+        ret = sap_model.FrameObj.GetLength(frame_name)
+        print(f"-- GetLength pentru {frame_name}: ret={ret}")
+
+        if ret[0] == 0:
+            length = ret[1]
+            print(f"-- Lungime obținută pentru {frame_name}: {length:.3f}")
+            return length
+        else:
+            print(f"⮽⮽ Eroare GetLength pentru {frame_name}: cod {ret[0]}")
+            # Încearcă o metodă alternativă pentru a obține lungimea
+            return get_frame_length_alternative(frame_name)
+    except Exception as e:
+        print(f"⮽⮽ Eroare la obținerea lungimii pentru {frame_name}: {e}")
+        return 0.0
+
+
+def get_frame_length_alternative(frame_name):
+    """Metodă alternativă pentru a obține lungimea unei grinzi"""
+    try:
+        # Obține coordonatele punctelor de capăt
+        ret = sap_model.FrameObj.GetPoints(frame_name)
+        if ret[0] == 0:
+            point1, point2 = ret[1], ret[2]
+            # Obține coordonatele punctelor
+            ret1 = sap_model.PointObj.GetCoordCartesian(point1)
+            ret2 = sap_model.PointObj.GetCoordCartesian(point2)
+
+            if ret1[0] == 0 and ret2[0] == 0:
+                x1, y1, z1 = ret1[1], ret1[2], ret1[3]
+                x2, y2, z2 = ret2[1], ret2[2], ret2[3]
+                # Calculează distanța euclidiană
+                length = ((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2) ** 0.5
+                print(f"-- Lungime calculată pentru {frame_name}: {length:.3f}")
+                return length
+
+        print(f"⮽⮽ Nu s-a putut calcula lungimea pentru {frame_name}")
+        return 0.0
+
+    except Exception as e:
+        print(f"⮽⮽ Eroare la calculul alternativ al lungimii pentru {frame_name}: {e}")
+        return 0.0
+
+def get_section_properties(frame_name):
+    """Obține proprietățile secțiunii unei grinzi (simplificat)"""
+    try:
+        ret = sap_model.FrameObj.GetSection(frame_name)
+        if ret[0] != 0:
+            return "N/A"
+
+        section_name = ret[1]
+
+        # Încearcă să obții proprietăți pentru diferite tipuri de secțiuni
+        ret = sap_model.PropFrame.GetRectangle(section_name)
+        if ret[0] == 0:
+            return f"Rect: {ret[4]}x{ret[5]}"  # Width x Height
+
+        ret = sap_model.PropFrame.GetISection(section_name)
+        if ret[0] == 0:
+            return f"I-Sec: {ret[4]}x{ret[5]}"  # Depth x Width
+
+        ret = sap_model.PropFrame.GetTube(section_name)
+        if ret[0] == 0:
+            return f"Tube: {ret[4]}x{ret[5]}"  # Depth x Width
+
+        return section_name  # Return section name if no specific properties found
+
+    except Exception as e:
+        print(f"Eroare la obținerea proprietăților secțiunii pentru {frame_name}: {e}")
+        return "N/A"

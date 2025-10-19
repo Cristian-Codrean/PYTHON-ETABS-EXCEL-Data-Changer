@@ -5,8 +5,10 @@ import os
 import json
 import sqlite3
 from datetime import datetime
+from etabs_api.connection import get_sap_model
+sap_model = get_sap_model()
 
-# ==================== IMPORTURI FIXATE ====================
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
@@ -36,7 +38,7 @@ except ImportError:
 
 # Importă operațiuni Excel direct
 try:
-    from excel.operations import copy_excel_file
+    from excel.operations import *
 except ImportError:
     print(f"⮽⮽ Avertisment de import operatiuni EXCEL: {e}")
 
@@ -56,9 +58,6 @@ class DesignApp:
         # Testează conexiunea ETABS făcând un apel API simplu
         print("-- Testare conexiune ETABS")
         try:
-            from etabs_api.connection import get_sap_model
-            sap_model = get_sap_model()
-
             # Testează conexiunea cu un apel simplu
             test_result = sap_model.GetModelFilename()
             print(f"✓✓ Conexiune ETABS SUCCES. Model: {test_result}")
@@ -203,12 +202,18 @@ class DesignApp:
         )
 
     def create_excel(self):
-        """Creează baza de date locală, apoi copiază Excel și DB în folderul specificat"""
+        """Creează baza de date temporara, apoi populeaza un fisier excel nou cu inforamtii detaileate despre
+        frameurile selectate"""
 
         # Verifică folderul de rezultate
         result_folder = self.file_frame.result_folder_var.get()
         if not result_folder:
             messagebox.showerror("⮽⮽ Eroare", "Selectează un folder de rezultate!")
+            return
+
+        # Verifică dacă folderul există
+        if not os.path.exists(result_folder):
+            messagebox.showerror("⮽⮽ Eroare", f"Folderul de rezultate nu există: {result_folder}")
             return
 
         # Verifică fișierul template
@@ -217,24 +222,38 @@ class DesignApp:
             messagebox.showerror("⮽⮽ Eroare", "Selectează un fișier template!")
             return
 
+        # Verifică dacă fișierul template există
+        if not os.path.exists(default_file):
+            messagebox.showerror("⮽⮽ Eroare", f"Fișierul template nu există: {default_file}")
+            return
+
         try:
             # Creează nume de fișier cu timestamp
-            import datetime
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            excel_filename = f"beam_analysis_{timestamp}.xlsx"
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+            # Obține numele modelului ETABS
+            try:
+                model_name = sap_model.GetModelFilename()
+                # Extrage doar numele fișierului fără cale
+                model_basename = os.path.basename(model_name)
+                model_basename = model_basename.replace('.edb', '')
+            except Exception as e:
+                print(f"⮽⮽ Eroare la obținerea numelui modelului: {e}")
+                model_basename = "ETABS_Model"
+
+            excel_filename = f"{model_basename} - grinzi ({timestamp}).xlsx"
             excel_path = os.path.join(result_folder, excel_filename)
 
             # Creează nume pentru baza de date cu același timestamp
-            db_filename = f"beam_database_{timestamp}.db"
+            db_filename = f"{model_basename} - grinzi DB - ({timestamp}).db"
             db_path = os.path.join(result_folder, db_filename)
 
-            print(f"-- Încep procesul de creare Excel și DB...")
-            print(f"-- Template Excel: {default_file}")
-            print(f"-- Destinație Excel: {excel_path}")
-            print(f"-- Destinație DB: {db_path}")
+            print(f"-- Folder rezultate: {result_folder}")
+            print(f"-- Cale Excel finală: {excel_path}")
+            print(f"-- Cale DB finală: {db_path}")
 
             # Pas 1: Creează baza de date LOCALĂ cu toate grinzile selectate
-            print("-- Creare bază de date locală cu grinzile selectate...")
+            print("-- Creare bază de date locală cu grinzile selectate")
             all_beams = []
             for group in self.all_beam_groups_a:
                 all_beams.extend(group)
@@ -253,31 +272,56 @@ class DesignApp:
 
             print("✓✓ Bază de date locală creată cu succes!")
 
-            # Pas 2: Functii pentru popularea bazei de date mari
-            print("-- Populare baza de date cu informații detaliate")
-            self.populate_database_with_details()
+            # Pas 2: Copy the template file to new location with preserved formatting
+            print("-- Copiere fișier template la locația nouă (cu păstrarea formatărilor)")
+            try:
+                from excel.operations import copy_excel_file_with_column_widths
+                copy_success = copy_excel_file_with_column_widths(default_file, excel_path)
+                if not copy_success:
+                    messagebox.showerror("⮽⮽ Eroare", "Nu s-a putut copia fișierul template!")
+                    return
+            except ImportError:
+                # Fallback to original method if new function is not available
+                from excel.operations import copy_excel_file
+                copy_success = copy_excel_file(default_file, excel_path)
+                if not copy_success:
+                    messagebox.showerror("⮽⮽ Eroare", "Nu s-a putut copia fișierul template!")
+                    return
 
-            # Pas 3: Functii pentru procesarea excel
-            print("-- Procesare fișier Excel cu date din baza de date locala")
-            excel_success = self.process_excel_with_database(default_file, excel_path)
-
-            if not excel_success:
-                messagebox.showerror("⮽⮽ Eroare", "Nu s-a putut procesa fișierul Excel!")
+            # Pas 3: Create Excel with structured layout
+            print("-- Creare schelet Excel cu datele grinzilor")
+            try:
+                # Use the new structured layout
+                from excel.operations import create_structured_excel_layout
+                excel_success = create_structured_excel_layout(
+                    excel_path=excel_path,
+                    template_excel_path=default_file,  # Use the default file as template
+                    db_path="frames.db"
+                )
+                if not excel_success:
+                    messagebox.showerror("⮽⮽ Eroare", "Nu s-a putut crea structura Excel!")
+                    return
+            except Exception as e:
+                print(f"⮽⮽ Eroare la crearea Excel-ului structurat: {e}")
+                messagebox.showerror("⮽⮽ Eroare", f"Eroare la crearea Excel-ului: {e}")
                 return
 
-            # Pas 4: Copiază baza de date detailata în folderul de rezultate
-            if os.path.exists("frames.db"):
-                try:
-                    import shutil
-                    shutil.copy2("frames.db", db_path)
-                    print(f"✓✓ Bază de date copiată în: {db_path}")
-                except Exception as e:
-                    print(f"⮽⮽ Eroare la copierea bazei de date: {e}")
-                    messagebox.showerror("⮽⮽ Eroare", f"Eroare la copierea bazei de date: {e}")
+            # Pas 4: Create Excel skeleton with beam data
+            print("-- Creare schelet Excel cu datele grinzilor")
+            try:
+                # Use the new structured layout instead of dynamic sheets
+                from excel.operations import create_structured_excel_layout
+                excel_success = create_structured_excel_layout(
+                    excel_path=excel_path,
+                    template_excel_path=default_file,  # Use the default file as template
+                    db_path="frames.db"
+                )
+                if not excel_success:
+                    messagebox.showerror("⮽⮽ Eroare", "Nu s-a putut crea structura Excel!")
                     return
-            else:
-                print("⮽⮽ Baza de date locală nu există pentru copiere")
-                messagebox.showerror("⮽⮽Eroare", "Baza de date locală nu a fost creată!")
+            except ImportError as e:
+                print(f"⮽⮽ Eroare la importul funcției create_structured_excel_layout: {e}")
+                messagebox.showerror("⮽⮽ Eroare", f"Funcția de creare structurată nu este disponibilă: {e}")
                 return
 
             # Afișează mesaj de succes
@@ -290,76 +334,6 @@ class DesignApp:
         except Exception as e:
             print(f"⮽⮽ Eroare la crearea Excel-ului: {e}")
             messagebox.showerror("Eroare", f"Eroare: {e}")
-
-    def populate_database_with_details(self):
-        """Populează baza de date cu informații detaliate din ETABS"""
-        try:
-            # Conectează-te la baza de date locală
-            conn = sqlite3.connect("frames.db")
-            cursor = conn.cursor()
-
-            # Obține toate grinzile din baza de date
-            cursor.execute("SELECT UniqueName FROM Frames")
-            beams = cursor.fetchall()
-
-            print(f"-- Populare detalii pentru {len(beams)} grinzi...")
-
-            for (beam_name,) in beams:
-                try:
-                    # Obține informații detaliate din ETABS
-                    label, story = etabs_api.operations.get_label_and_story(beam_name)
-                    guid = etabs_api.operations.get_frame_guid(beam_name)
-                    section_name = etabs_api.operations.get_section_name(beam_name)
-
-                    # Obține geometria
-                    geometry = etabs_api.operations.get_geometry(beam_name)
-                    length = geometry['length'] if geometry else 0
-
-                    # Actualizează înregistrarea în baza de date
-                    cursor.execute("""
-                    UPDATE Frames 
-                    SET Label = ?, Story = ?, GUID = ?, SectionName = ?, Length = ?
-                    WHERE UniqueName = ?
-                    """, (label, story, guid, section_name, length, beam_name))
-
-                    print(f"✓✓ Actualizat: {beam_name}")
-
-                except Exception as e:
-                    print(f"⮽⮽️ Eroare la actualizarea grinzii {beam_name}: {e}")
-                    continue
-
-            # Salvează schimbările
-            conn.commit()
-            conn.close()
-            print("✓✓ Baza de date a fost populată cu informații detaliate!")
-
-        except Exception as e:
-            print(f"⮽⮽ Eroare la popularea bazei de date: {e}")
-
-    def process_excel_with_database(self, template_path, output_path):
-        """Procesează fișierul Excel folosind datele din baza de date"""
-        try:
-            # Pas 1: Copiază template-ul Excel
-            print(f"-- Copiiere template-ul Excel...")
-            success = copy_excel_file(template_path, output_path)
-
-            if not success:
-                print("⮽⮽ Eroare la copierea template-ului Excel")
-                return False
-
-            # Pas 2: Aici vor fi adăugate funcțiile pentru popularea Excel-ului
-            # cu date din baza de date
-            print(f"-- Populare Excel-ul cu date din baza de date...")
-
-            # Exemplu simplu - poți extinde această funcție mai târziu
-            # pentru a popula fișierul Excel cu date din baza de date
-
-            print(f"✓✓ Excel procesat cu succes: {output_path}")
-            return True
-
-        except Exception as e:
-            print(f"⮽⮽ Eroare la procesarea Excel-ului: {e}")
-            return False
 
     def close_application(self):
         """Închide aplicația și șterge fișierele temporare locale"""
@@ -445,17 +419,30 @@ class DesignApp:
     def start_beam_selection(self, scenario):
         """Începe procesul de selectare a grinzilor pentru scenariul dat"""
         if self.beam_selection_active:
-            print("-- Selectarea grinzilor este deja activă!")
+            print("-- Selectarea grinzilor este deja activă! Opriți mai întâi selecția curentă.")
             return
+
+        # CAPTURE CURRENT STATE AT THE MOMENT OF STARTING SELECTION
+        current_state = self.get_current_state_at_selection_start()
+
+        # Ensure etaj_value is not None, use a default if needed
+        if self.etaj_value is None:
+            print("-- Avertisment: Niciun etaj selectat, se va folosi 'Unknown'")
+            self.etaj_value = "Unknown"
 
         self.current_scenario = scenario
         self.beam_selection_active = True
-        self.current_beam_group = []
+        self.current_beam_group = []  # RESET current beam group for new selection
 
+        # STORE THE CAPTURED STATE FOR THIS SELECTION SESSION
+        self.current_selection_state = current_state
+
+        # Rest of the method remains the same...
         # Șterge orice selecție anterioară în ETABS
         etabs_api.operations.clear_frame_selection()
 
         print(f"-- Început selecție grinzi pentru {scenario}")
+        print(f"-- Stare butoane la începutul selecției: {current_state['button_states']}")
         print("-- Te rog selectează grinzi în ETABS...")
 
         # Afișează dialogul de confirmare
@@ -575,6 +562,13 @@ class DesignApp:
     def confirm_and_continue(self):
         """Confirmă grupul curent și continuă cu următorul grup"""
         if self.current_beam_group:
+            # Folosește starea capturată LA ÎNCEPUTUL SELECȚIEI
+            if hasattr(self, 'current_selection_state'):
+                selection_state = self.current_selection_state
+            else:
+                # Fallback: capture current state
+                selection_state = self.get_current_state_at_selection_start()
+
             # Salvează grupul curent în scenariul corespunzător
             if self.current_scenario == "A":
                 self.all_beam_groups_a.append(self.current_beam_group.copy())
@@ -584,10 +578,11 @@ class DesignApp:
                 current_groups = self.all_beam_groups_b
 
             print(
-                f"-- Grupul {len(current_groups)} confirmat pentru scenariul {self.current_scenario}: {self.current_beam_group}")
+                f"-- Grupul {len(current_groups)} confirmat pentru scenariul {self.current_scenario}: {len(self.current_beam_group)} grinzi")
+            print(f"-- Grinzi în grup: {self.current_beam_group}")
 
-            # Salvează în fișier temporar
-            self.save_temp_data(self.current_scenario, current_groups)
+            # Salvează în fișier temporar CU STARE CAPTURATĂ LA ÎNCEPUT
+            self.save_temp_data_with_selection_state(self.current_scenario, current_groups, selection_state)
 
             # Ascunde grinzile
             success = etabs_api.operations.hide_specific_frames(self.current_beam_group)
@@ -609,6 +604,13 @@ class DesignApp:
     def confirm_and_stop(self):
         """Confirmă grupul curent și oprește selecția"""
         if self.current_beam_group:
+            # Folosește starea capturată LA ÎNCEPUTUL SELECȚIEI
+            if hasattr(self, 'current_selection_state'):
+                selection_state = self.current_selection_state
+            else:
+                # Fallback: capture current state
+                selection_state = self.get_current_state_at_selection_start()
+
             # Salvează grupul curent
             if self.current_scenario == "A":
                 self.all_beam_groups_a.append(self.current_beam_group.copy())
@@ -617,10 +619,12 @@ class DesignApp:
                 self.all_beam_groups_b.append(self.current_beam_group.copy())
                 current_groups = self.all_beam_groups_b
 
-            print(f"-- Grupul final confirmat pentru scenariul {self.current_scenario}")
+            print(
+                f"-- Grupul final confirmat pentru scenariul {self.current_scenario}: {len(self.current_beam_group)} grinzi")
+            print(f"-- Grinzi în grup final: {self.current_beam_group}")
 
-            # Salvează în fișier temporar
-            self.save_temp_data(self.current_scenario, current_groups)
+            # Salvează în fișier temporar CU STARE CAPTURATĂ LA ÎNCEPUT
+            self.save_temp_data_with_selection_state(self.current_scenario, current_groups, selection_state)
 
             # Ascunde grinzile
             etabs_api.operations.hide_specific_frames(self.current_beam_group)
@@ -628,6 +632,11 @@ class DesignApp:
         # Șterge selecția și oprește
         etabs_api.operations.clear_frame_selection()
         self.stop_beam_selection()
+
+        # Clean up the stored selection state
+        if hasattr(self, 'current_selection_state'):
+            del self.current_selection_state
+
         return True
 
     def cancel_selection(self):
@@ -638,6 +647,11 @@ class DesignApp:
         etabs_api.operations.clear_frame_selection()
         self.current_beam_group = []
         self.stop_beam_selection()
+
+        # Clean up the stored selection state
+        if hasattr(self, 'current_selection_state'):
+            del self.current_selection_state
+
         return True
 
     def fill_listbox(self, listbox):
@@ -761,25 +775,216 @@ class DesignApp:
             self.file_frame.result_folder_var.set(folder)
 
     def save_temp_data(self, scenario, beam_groups):
-        """Salvează datele temporare pentru un scenariu"""
-        data = {
-            "timestamp": datetime.now().isoformat(),
-            f"scenario_{scenario.lower()}": {
-                "beam_groups": beam_groups,
+        """Salvează datele temporare pentru un scenariu cu setările specifice fiecărui grup"""
+        try:
+            # Încarcă datele existente sau creează structură nouă
+            if os.path.exists("beam_selection_temp.json"):
+                with open("beam_selection_temp.json", 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            else:
+                data = {
+                    "timestamp": datetime.now().isoformat(),
+                    "scenario_a": {"beam_groups": []},
+                    "scenario_b": {"beam_groups": []}
+                }
+
+            # Actualizează doar scenariul curent
+            scenario_key = f"scenario_{scenario.lower()}"
+
+            # Obține setările curente (la momentul selecției)
+            current_settings = {
                 "rezistente_type": self.top_radio_state,
                 "etaj": self.etaj_value,
-                "selected_combinations_upper": self.selected_combinations[f"{scenario}_upper"],
-                "selected_combinations_lower": self.selected_combinations[f"{scenario}_lower"],
+                "selected_combinations_upper": self.selected_combinations[f"{scenario}_upper"].copy(),
+                "selected_combinations_lower": self.selected_combinations[f"{scenario}_lower"].copy(),
                 "button_states": {k[1]: v for k, v in self.button_states.items() if k[0] == scenario}
             }
-        }
 
-        with open("beam_selection_temp.json", 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        print(f"-- Date salvate pentru scenariul {scenario}")
+            # Pentru fiecare grup de grinzi, salvează și setările aferente
+            detailed_beam_groups = []
+            for i, beam_group in enumerate(beam_groups):
+                detailed_group = {
+                    "beams": beam_group,
+                    "settings": current_settings.copy(),  # Salvează setările pentru acest grup
+                    "group_number": i + 1,
+                    "selection_timestamp": datetime.now().isoformat()
+                }
+                detailed_beam_groups.append(detailed_group)
+
+            data[scenario_key] = {
+                "beam_groups": detailed_beam_groups,
+                "last_updated": datetime.now().isoformat()
+            }
+
+            with open("beam_selection_temp.json", 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            print(f"-- Date salvate pentru scenariul {scenario} cu {len(detailed_beam_groups)} grupuri")
+
+        except Exception as e:
+            print(f"⮽⮽ Eroare la salvarea datelor temporare: {e}")
 
     def get_detailed_summary_data(self):
-        """Returnează datele detaliate pentru verificare"""
+        """Returnează datele detaliate pentru verificare - folosește setările din JSON"""
+        try:
+            # Încarcă datele din fișierul temporar pentru a obține setările corecte per grup
+            if os.path.exists("beam_selection_temp.json"):
+                with open("beam_selection_temp.json", 'r', encoding='utf-8') as f:
+                    json_data = json.load(f)
+            else:
+                json_data = {}
+
+            summary = {
+                "timestamp": datetime.now().isoformat(),
+                "scenarios": {}
+            }
+
+            # Procesează scenariul A din JSON
+            if "scenario_a" in json_data:
+                scenario_a_data = json_data["scenario_a"]
+                beam_groups_a = scenario_a_data.get("beam_groups", [])
+
+                summary["scenarios"]["Infrastructura"] = {
+                    "group_count": len(beam_groups_a),
+                    "total_beams": sum(len(group.get("beams", [])) for group in beam_groups_a),
+                    "beam_groups": []
+                }
+
+                for group_idx, group_data in enumerate(beam_groups_a, 1):
+                    group_settings = group_data.get("settings", {})
+                    beams_in_group = group_data.get("beams", [])
+
+                    group_info = {
+                        "group_number": group_idx,
+                        "settings": group_settings,
+                        "beams": []
+                    }
+
+                    for beam_name in beams_in_group:
+                        beam_info = self.get_beam_info(beam_name)
+                        group_info["beams"].append(beam_info)
+
+                    summary["scenarios"]["Infrastructura"]["beam_groups"].append(group_info)
+
+            # Procesează scenariul B din JSON
+            if "scenario_b" in json_data:
+                scenario_b_data = json_data["scenario_b"]
+                beam_groups_b = scenario_b_data.get("beam_groups", [])
+
+                summary["scenarios"]["Suprastructura"] = {
+                    "group_count": len(beam_groups_b),
+                    "total_beams": sum(len(group.get("beams", [])) for group in beam_groups_b),
+                    "beam_groups": []
+                }
+
+                for group_idx, group_data in enumerate(beam_groups_b, 1):
+                    group_settings = group_data.get("settings", {})
+                    beams_in_group = group_data.get("beams", [])
+
+                    group_info = {
+                        "group_number": group_idx,
+                        "settings": group_settings,
+                        "beams": []
+                    }
+
+                    for beam_name in beams_in_group:
+                        beam_info = self.get_beam_info(beam_name)
+                        group_info["beams"].append(beam_info)
+
+                    summary["scenarios"]["Suprastructura"]["beam_groups"].append(group_info)
+
+            return summary
+
+        except Exception as e:
+            print(f"⮽⮽ Eroare la obținerea datelor sumar din JSON: {e}")
+            # Fallback to empty summary if JSON reading fails
+            return {
+                "timestamp": datetime.now().isoformat(),
+                "scenarios": {}
+            }
+
+        except Exception as e:
+            print(f"⮽⮽ Eroare la obținerea datelor sumar: {e}")
+            # Fallback to old method if there's an error
+            return self._get_detailed_summary_data_fallback()
+
+    def get_detailed_summary_data(self):
+        """Returnează datele detaliate pentru verificare - folosește setările din JSON"""
+        try:
+            # Încarcă datele din fișierul temporar pentru a obține setările corecte per grup
+            if os.path.exists("beam_selection_temp.json"):
+                with open("beam_selection_temp.json", 'r', encoding='utf-8') as f:
+                    json_data = json.load(f)
+            else:
+                json_data = {}
+
+            summary = {
+                "timestamp": datetime.now().isoformat(),
+                "scenarios": {}
+            }
+
+            # Procesează scenariul A din JSON
+            if "scenario_a" in json_data:
+                scenario_a_data = json_data["scenario_a"]
+                beam_groups_a = scenario_a_data.get("beam_groups", [])
+
+                summary["scenarios"]["Infrastructura"] = {
+                    "group_count": len(beam_groups_a),
+                    "total_beams": sum(len(group.get("beams", [])) for group in beam_groups_a),
+                    "beam_groups": []
+                }
+
+                for group_idx, group_data in enumerate(beam_groups_a, 1):
+                    group_settings = group_data.get("settings", {})
+                    beams_in_group = group_data.get("beams", [])
+
+                    group_info = {
+                        "group_number": group_idx,
+                        "settings": group_settings,
+                        "beams": []
+                    }
+
+                    for beam_name in beams_in_group:
+                        beam_info = self.get_beam_info(beam_name)
+                        group_info["beams"].append(beam_info)
+
+                    summary["scenarios"]["Infrastructura"]["beam_groups"].append(group_info)
+
+            # Procesează scenariul B din JSON
+            if "scenario_b" in json_data:
+                scenario_b_data = json_data["scenario_b"]
+                beam_groups_b = scenario_b_data.get("beam_groups", [])
+
+                summary["scenarios"]["Suprastructura"] = {
+                    "group_count": len(beam_groups_b),
+                    "total_beams": sum(len(group.get("beams", [])) for group in beam_groups_b),
+                    "beam_groups": []
+                }
+
+                for group_idx, group_data in enumerate(beam_groups_b, 1):
+                    group_settings = group_data.get("settings", {})
+                    beams_in_group = group_data.get("beams", [])
+
+                    group_info = {
+                        "group_number": group_idx,
+                        "settings": group_settings,
+                        "beams": []
+                    }
+
+                    for beam_name in beams_in_group:
+                        beam_info = self.get_beam_info(beam_name)
+                        group_info["beams"].append(beam_info)
+
+                    summary["scenarios"]["Suprastructura"]["beam_groups"].append(group_info)
+
+            return summary
+
+        except Exception as e:
+            print(f"⮽⮽ Eroare la obținerea datelor sumar din JSON: {e}")
+            # Fallback to the original method if JSON reading fails
+            return self.get_detailed_summary_data_original()
+
+    def get_detailed_summary_data_original(self):
+        """Versiunea originală a metodei de sumar (ca fallback)"""
         summary = {
             "timestamp": datetime.now().isoformat(),
             "scenarios": {}
@@ -807,14 +1012,7 @@ class DesignApp:
                 }
                 for beam_name in group:
                     beam_info = self.get_beam_info(beam_name)
-                    group_info["beams"].append({
-                        "unique_name": beam_name,
-                        "label": beam_info["Label"],
-                        "story": beam_info["Story"],
-                        "length": beam_info["Length"],
-                        "section_name": beam_info["SectionName"],
-                        "material": beam_info["Material"]
-                    })
+                    group_info["beams"].append(beam_info)
                 summary["scenarios"]["Infrastructura"]["beam_groups"].append(group_info)
 
         # Procesează scenariul B
@@ -839,50 +1037,287 @@ class DesignApp:
                 }
                 for beam_name in group:
                     beam_info = self.get_beam_info(beam_name)
-                    group_info["beams"].append({
-                        "unique_name": beam_name,
-                        "label": beam_info["Label"],
-                        "story": beam_info["Story"],
-                        "length": beam_info["Length"],
-                        "section_name": beam_info["SectionName"],
-                        "material": beam_info["Material"]
-                    })
+                    group_info["beams"].append(beam_info)
                 summary["scenarios"]["Suprastructura"]["beam_groups"].append(group_info)
 
         return summary
 
-    def get_beam_info(self, beam_name):
-        """Extrage informații despre o grindă din ETABS"""
-        try:
-            label, story = etabs_api.operations.get_label_and_story(beam_name)
-            guid = etabs_api.operations.get_frame_guid(beam_name)
-            section_name = etabs_api.operations.get_section_name(beam_name)
+    def _get_global_settings_from_groups(self, beam_groups, scenario):
+        """Extrage setări globale din grupurile existente pentru compatibilitate"""
+        if not beam_groups:
+            return {
+                "rezistente_type": "N/A",
+                "etaj": "N/A",
+                "combinations_upper": [],
+                "combinations_lower": [],
+                "button_states": {}
+            }
 
-            return {
-                "UniqueName": beam_name,
-                "Label": label,
-                "Story": story,
-                "GUID": guid,
-                "SectionName": section_name,
-                "Length": 0,  # Poți adăuga lungimea dacă este necesar
-                "Material": "Concrete"
+        # Folosește setările din primul grup ca setări globale
+        first_group_settings = beam_groups[0].get("settings", {})
+
+        return {
+            "rezistente_type": first_group_settings.get("rezistente_type", "N/A"),
+            "etaj": first_group_settings.get("etaj", "N/A"),
+            "combinations_upper": first_group_settings.get("selected_combinations_upper", []),
+            "combinations_lower": first_group_settings.get("selected_combinations_lower", []),
+            "button_states": first_group_settings.get("button_states", {})
+        }
+
+    def get_beam_info(self, beam_name):
+        """Extrage informații despre o grindă din ETABS pentru popup"""
+        try:
+            print(f"-- Obținere informații pentru grindă: {beam_name}")
+
+            label, story = etabs_api.operations.get_label_and_story(beam_name)
+            section_name = etabs_api.operations.get_section_name(beam_name)
+            material = etabs_api.operations.get_section_material(beam_name)
+            length = etabs_api.operations.get_frame_length(beam_name)
+
+            beam_info = {
+                "unique_name": beam_name,
+                "label": label if label else "N/A",
+                "story": story if story else "N/A",
+                "section_name": section_name if section_name else "N/A",
+                "material": material if material else "N/A",
+                "length": length if length else 0.0
             }
+
+            print(f"-- Informații obținute pentru {beam_name}:")
+            print(f"   Label: {beam_info['label']}")
+            print(f"   Story: {beam_info['story']}")
+            print(f"   Section: {beam_info['section_name']}")
+            print(f"   Material: {beam_info['material']}")
+            print(f"   Length: {beam_info['length']:.3f}")
+
+            return beam_info
+
         except Exception as e:
-            print(f"Eroare la obținerea informațiilor pentru {beam_name}: {e}")
+            print(f"⮽⮽ Eroare critică la obținerea informațiilor pentru {beam_name}: {e}")
             return {
-                "UniqueName": beam_name,
-                "Label": "N/A",
-                "Story": "N/A",
-                "GUID": "N/A",
-                "SectionName": "N/A",
-                "Length": 0,
-                "Material": "Concrete"
+                "unique_name": beam_name,
+                "label": "N/A",
+                "story": "N/A",
+                "section_name": "N/A",
+                "material": "N/A",
+                "length": 0.0
             }
+
+    def get_current_state_at_confirmation(self):
+        """Capturează starea curentă la momentul confirmării selecției"""
+        self.update_top_radio_state()
+        self.update_selected_combinations()
+
+        return {
+            "button_states": self.button_states.copy(),
+            "top_radio_state": self.top_radio_state,
+            "selected_combinations": self.selected_combinations.copy(),
+            "etaj": self.etaj_value
+        }
+
+    def save_temp_data_with_current_state(self, scenario, beam_groups, current_state):
+        """Salvează datele temporare cu starea capturată la momentul selecției"""
+        try:
+            # Încarcă datele existente sau creează structură nouă
+            if os.path.exists("beam_selection_temp.json"):
+                with open("beam_selection_temp.json", 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            else:
+                data = {
+                    "timestamp": datetime.now().isoformat(),
+                    "scenario_a": {"beam_groups": []},
+                    "scenario_b": {"beam_groups": []}
+                }
+
+            # Actualizează doar scenariul curent
+            scenario_key = f"scenario_{scenario.lower()}"
+
+            # Reconstruim lista de grupuri cu setările corespunzătoare
+            detailed_beam_groups = []
+
+            # Pentru grupurile existente, păstrăm setările originale
+            if scenario_key in data and "beam_groups" in data[scenario_key]:
+                existing_groups = data[scenario_key]["beam_groups"]
+                detailed_beam_groups.extend(existing_groups)
+
+            # Adaugă noul grup CU SETĂRILE CAPTURATE
+            new_group = {
+                "beams": beam_groups[-1] if beam_groups else [],  # Ultimul grup adăugat
+                "settings": {
+                    "rezistente_type": current_state["top_radio_state"],
+                    "etaj": current_state["etaj"],
+                    "selected_combinations_upper": current_state["selected_combinations"][f"{scenario}_upper"],
+                    "selected_combinations_lower": current_state["selected_combinations"][f"{scenario}_lower"],
+                    "button_states": {k[1]: v for k, v in current_state["button_states"].items() if k[0] == scenario}
+                },
+                "group_number": len(detailed_beam_groups) + 1,
+                "selection_timestamp": datetime.now().isoformat()
+            }
+            detailed_beam_groups.append(new_group)
+
+            data[scenario_key] = {
+                "beam_groups": detailed_beam_groups,
+                "last_updated": datetime.now().isoformat()
+            }
+
+            with open("beam_selection_temp.json", 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            print(f"-- Date salvate pentru scenariul {scenario} cu {len(detailed_beam_groups)} grupuri")
+
+        except Exception as e:
+            print(f"⮽⮽ Eroare la salvarea datelor temporare: {e}")
+
+    def get_current_state_at_selection_start(self):
+        """Capturează starea curentă la momentul începerii selecției"""
+        self.update_top_radio_state()
+        self.update_selected_combinations()
+
+        return {
+            "button_states": self.button_states.copy(),
+            "top_radio_state": self.top_radio_state,
+            "selected_combinations": self.selected_combinations.copy(),
+            "etaj": self.etaj_value,
+            "selection_start_time": datetime.now().isoformat()
+        }
+
+    def save_temp_data_with_selection_state(self, scenario, beam_groups, selection_state):
+        """Salvează datele temporare cu starea capturată la începutul selecției"""
+        try:
+            # Încarcă datele existente sau creează structură nouă
+            if os.path.exists("beam_selection_temp.json"):
+                with open("beam_selection_temp.json", 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            else:
+                data = {
+                    "timestamp": datetime.now().isoformat(),
+                    "scenario_a": {"beam_groups": []},
+                    "scenario_b": {"beam_groups": []}
+                }
+
+            # Actualizează doar scenariul curent
+            scenario_key = f"scenario_{scenario.lower()}"
+
+            # Reconstruim lista de grupuri cu setările corespunzătoare
+            detailed_beam_groups = []
+
+            # Pentru grupurile existente, păstrăm setările originale
+            if scenario_key in data and "beam_groups" in data[scenario_key]:
+                existing_groups = data[scenario_key]["beam_groups"]
+                detailed_beam_groups.extend(existing_groups)
+
+            # Adaugă toate grupurile curente CU SETĂRILE CAPTURATE LA ÎNCEPUTUL SELECȚIEI
+            # Ultimul grup este cel tocmai adăugat
+            if beam_groups:  # Dacă există grupurile
+                # Obține doar grupurile noi care nu sunt deja în detailed_beam_groups
+                existing_group_count = len(detailed_beam_groups)
+                new_groups_count = len(beam_groups) - existing_group_count
+
+                if new_groups_count > 0:
+                    # Adaugă noile grupuri
+                    for i in range(new_groups_count):
+                        group_index = existing_group_count + i
+                        if group_index < len(beam_groups):
+                            new_group = {
+                                "beams": beam_groups[group_index],
+                                "settings": {
+                                    "rezistente_type": selection_state["top_radio_state"],
+                                    "etaj": selection_state["etaj"],
+                                    "selected_combinations_upper": selection_state["selected_combinations"][
+                                        f"{scenario}_upper"],
+                                    "selected_combinations_lower": selection_state["selected_combinations"][
+                                        f"{scenario}_lower"],
+                                    "button_states": {k[1]: v for k, v in selection_state["button_states"].items() if
+                                                      k[0] == scenario}
+                                },
+                                "group_number": len(detailed_beam_groups) + 1,
+                                "selection_start_time": selection_state["selection_start_time"],
+                                "confirmation_time": datetime.now().isoformat()
+                            }
+                            detailed_beam_groups.append(new_group)
+
+            data[scenario_key] = {
+                "beam_groups": detailed_beam_groups,
+                "last_updated": datetime.now().isoformat()
+            }
+
+            with open("beam_selection_temp.json", 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            print(f"-- Date salvate pentru scenariul {scenario} cu {len(detailed_beam_groups)} grupuri")
+            print(f"-- Stare salvată: Rezistente={selection_state['top_radio_state']}, Etaj={selection_state['etaj']}")
+
+        except Exception as e:
+            print(f"⮽⮽ Eroare la salvarea datelor temporare: {e}")
 
     def run(self):
         """Rulează aplicația principală"""
         self.root.mainloop()
 
+    def get_current_state_at_selection_start(self):
+        """Capturează starea curentă la momentul începerii selecției"""
+        self.update_top_radio_state()
+        self.update_selected_combinations()
+
+        return {
+            "button_states": self.button_states.copy(),
+            "top_radio_state": self.top_radio_state,
+            "selected_combinations": self.selected_combinations.copy(),
+            "etaj": self.etaj_value,
+            "selection_start_time": datetime.now().isoformat()
+        }
+
+    def save_temp_data_with_selection_state(self, scenario, beam_groups, selection_state):
+        """Salvează datele temporare cu starea capturată la începutul selecției"""
+        try:
+            # Încarcă datele existente sau creează structură nouă
+            if os.path.exists("beam_selection_temp.json"):
+                with open("beam_selection_temp.json", 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            else:
+                data = {
+                    "timestamp": datetime.now().isoformat(),
+                    "scenario_a": {"beam_groups": []},
+                    "scenario_b": {"beam_groups": []}
+                }
+
+            # Actualizează doar scenariul curent
+            scenario_key = f"scenario_{scenario.lower()}"
+
+            # Reconstruim lista de grupuri cu setările corespunzătoare
+            detailed_beam_groups = []
+
+            # Pentru grupurile existente, păstrăm setările originale
+            if scenario_key in data and "beam_groups" in data[scenario_key]:
+                existing_groups = data[scenario_key]["beam_groups"]
+                detailed_beam_groups.extend(existing_groups)
+
+            # Adaugă noul grup CU SETĂRILE CAPTURATE LA ÎNCEPUTUL SELECȚIEI
+            new_group = {
+                "beams": beam_groups[-1] if beam_groups else [],  # Ultimul grup adăugat
+                "settings": {
+                    "rezistente_type": selection_state["top_radio_state"],
+                    "etaj": selection_state["etaj"],
+                    "selected_combinations_upper": selection_state["selected_combinations"][f"{scenario}_upper"],
+                    "selected_combinations_lower": selection_state["selected_combinations"][f"{scenario}_lower"],
+                    "button_states": {k[1]: v for k, v in selection_state["button_states"].items() if k[0] == scenario}
+                },
+                "group_number": len(detailed_beam_groups) + 1,
+                "selection_start_time": selection_state["selection_start_time"],
+                "confirmation_time": datetime.now().isoformat()
+            }
+            detailed_beam_groups.append(new_group)
+
+            data[scenario_key] = {
+                "beam_groups": detailed_beam_groups,
+                "last_updated": datetime.now().isoformat()
+            }
+
+            with open("beam_selection_temp.json", 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            print(f"-- Date salvate pentru scenariul {scenario} cu {len(detailed_beam_groups)} grupuri")
+            print(f"-- Stare salvată: Rezistente={selection_state['top_radio_state']}, Etaj={selection_state['etaj']}")
+
+        except Exception as e:
+            print(f"⮽⮽ Eroare la salvarea datelor temporare: {e}")
 
 if __name__ == "__main__":
     app = DesignApp()
