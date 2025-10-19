@@ -1,17 +1,14 @@
-import math
-
 # Importă funcția de conexiune
 from etabs_api.connection import get_sap_model
-
 
 def hide_specific_frames(frame_list):
     """Ascunde frame-urile specificate folosind funcția Make Objects Invisible din ETABS"""
     sap_model = get_sap_model()
     if not frame_list:
-        print("Nu sunt frame-uri de ascuns")
+        print("-- Nu sunt frame-uri de ascuns")
         return True
 
-    print(f"Încerc să ascund {len(frame_list)} frame-uri: {frame_list}")
+    print(f"-- Încerc să ascund {len(frame_list)} frame-uri: {frame_list}")
 
     try:
         # Mai întâi, șterge orice selecție existentă
@@ -25,11 +22,11 @@ def hide_specific_frames(frame_list):
                 if ret == 0:
                     selected_count += 1
                 else:
-                    print(f"Avertisment: Nu am putut selecta frame-ul {frame_name}, eroare: {ret}")
+                    print(f"Avertisment:⮽⮽ Nu sa putut selecta frame-ul {frame_name}, eroare: {ret}")
             except Exception as e:
-                print(f"Eroare la selectarea frame-ului {frame_name}: {e}")
+                print(f"⮽⮽ Eroare la selectarea frame-ului {frame_name}: {e}")
 
-        print(f"Selectat {selected_count} frame-uri pentru ascundere")
+        print(f"-- Selectat {selected_count} frame-uri pentru ascundere")
 
         if selected_count > 0:
             # Metoda 1: Încearcă să folosească interfața Display pentru a ascunde obiecte
@@ -37,19 +34,19 @@ def hide_specific_frames(frame_list):
                 # Obține toate obiectele selectate și le ascunde folosind opțiuni de display
                 ret = sap_model.Display.SetObjectSelected(False)  # Deselectează toate
                 if ret == 0:
-                    print(f"Ascuns cu succes {selected_count} frame-uri")
+                    print(f"-- Ascuns cu succes {selected_count} frame-uri")
                     return True
                 else:
-                    print(f"Display.SetObjectSelected a returnat eroare: {ret}")
+                    print(f"⮽⮽ Display.SetObjectSelected a returnat eroare: {ret}")
             except Exception as e:
-                print(f"Metoda Display a eșuat: {e}")
+                print(f"⮽⮽ Metoda Display a eșuat: {e}")
 
         # Șterge selecția indiferent de rezultat
         sap_model.SelectObj.ClearSelection()
         return selected_count > 0
 
     except Exception as e:
-        print(f"Eroare în hide_specific_frames: {e}")
+        print(f"⮽⮽ Eroare în hide_specific_frames: {e}")
         # Șterge selecția la eroare
         try:
             sap_model.SelectObj.ClearSelection()
@@ -65,15 +62,15 @@ def show_all_frames():
         # Metoda 1: Încearcă să arate toate obiectele folosind interfața Display
         ret = sap_model.Display.SetObjectSelected(True)  # Selectează toate pentru a le face vizibile
         if ret == 0:
-            print("Toate frame-urile ar trebui să fie vizibile acum")
+            print("-- Toate frame-urile ar trebui să fie vizibile acum")
             # Deselectează după ce le face vizibile
             sap_model.SelectObj.ClearSelection()
             return True
         else:
-            print(f"Display.SetObjectSelected a returnat eroare: {ret}")
+            print(f"⮽⮽ Display.SetObjectSelected a returnat eroare: {ret}")
             return False
     except Exception as e:
-        print(f"Eroare la afișarea frame-urilor: {e}")
+        print(f"⮽⮽ Eroare la afișarea frame-urilor: {e}")
         return False
 
 
@@ -84,7 +81,7 @@ def get_story_names():
         # Apel direct fără variabile intermediare
         return list(sap_model.Story.GetStories()[1])
     except Exception as e:
-        print(f"Eroare la obținerea numelor etajelor: {e}")
+        print(f"⮽⮽ Eroare la obținerea numelor etajelor: {e}")
         return []
 
 
@@ -96,7 +93,7 @@ def get_comb_names():
         my_name = []
         return list(sap_model.RespCombo.GetNameList(number_names, my_name)[1])
     except Exception as e:
-        print(f"Eroare la obținerea numelor combinațiilor: {e}")
+        print(f"⮽⮽ Eroare la obținerea numelor combinațiilor: {e}")
         return []
 
 
@@ -111,7 +108,7 @@ def get_selected_frames_live():
                 selected_list.append(frame_name)
         return selected_list
     except Exception as e:
-        print(f"Eroare la obținerea frame-urilor selectate live: {e}")
+        print(f"⮽⮽ Eroare la obținerea frame-urilor selectate live: {e}")
         return []
 
 
@@ -122,7 +119,7 @@ def clear_frame_selection():
         sap_model.SelectObj.ClearSelection()
         return True
     except Exception as e:
-        print(f"Eroare la ștergerea selecției frame-urilor: {e}")
+        print(f"⮽⮽ Eroare la ștergerea selecției frame-urilor: {e}")
         return False
 
 
@@ -133,7 +130,7 @@ def get_frame_guid(frame_name):
         result = sap_model.FrameObj.GetGUID(frame_name)
         return result[0] if result else None
     except Exception as e:
-        print(f"Eroare la obținerea GUID frame: {e}")
+        print(f"⮽⮽ Eroare la obținerea GUID frame: {e}")
         return None
 
 
@@ -144,7 +141,7 @@ def get_label_and_story(name):
         result = sap_model.FrameObj.GetLabelFromName(name)
         return result[0:2] if result else [None, None]
     except Exception as e:
-        print(f"Eroare la obținerea label și story: {e}")
+        print(f"⮽⮽ Eroare la obținerea label și story: {e}")
         return [None, None]
 
 

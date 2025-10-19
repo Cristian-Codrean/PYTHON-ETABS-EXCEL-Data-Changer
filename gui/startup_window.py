@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import sys
 import os
 
 
@@ -8,7 +7,7 @@ class StartupWindow:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("BEAM DESIGN BY CCO")
-        self.root.geometry("450x400")  # Înălțime crescută la 400
+        self.root.geometry("450x400")
         self.root.resizable(False, False)
 
         # Centrează fereastra pe ecran
@@ -17,7 +16,7 @@ class StartupWindow:
         # Va stoca alegerea utilizatorului
         self.choice = None
 
-        # Doar stocarea căii fișierului DB (fișierul ETABS eliminat)
+        # Doar stocarea căii fișierului DB
         self.db_file_path = tk.StringVar()
 
         self.create_widgets()
@@ -41,7 +40,7 @@ class StartupWindow:
         buttons_frame = ttk.Frame(main_container)
         buttons_frame.pack(fill="x", pady=15)
 
-        # Buton 1: Creează bază de date nouă - ÎNTOTDEAUNA DISPONIBIL
+        # Buton 1: Creează bază de date nouă
         self.btn_create_db = ttk.Button(
             buttons_frame,
             text="Creează o bază de date nouă",
@@ -62,13 +61,13 @@ class StartupWindow:
         )
         self.btn_connect_db.pack(pady=10)
 
-        # Selector fișier DB doar - ÎNTOTDEAUNA VIZIBIL - Făcut mai înalt
+        # Selector fișier DB
         file_selectors_frame = ttk.LabelFrame(main_container, text="Fișier bază de date")
-        file_selectors_frame.pack(fill="x", pady=15, ipady=10)  # Padding intern crescut
+        file_selectors_frame.pack(fill="x", pady=15, ipady=10)
 
-        # Selector fișier DB cu mai mult spațiu vertical
+        # Selector fișier DB
         db_frame = ttk.Frame(file_selectors_frame)
-        db_frame.pack(fill="x", padx=15, pady=12)  # Padding crescut
+        db_frame.pack(fill="x", padx=15, pady=12)
 
         ttk.Label(db_frame, text="Fișier DB:", width=10).pack(side="left")
         db_entry = ttk.Entry(db_frame, textvariable=self.db_file_path, width=25)
@@ -76,14 +75,14 @@ class StartupWindow:
         ttk.Button(db_frame, text="Browse", command=self.browse_db_file, width=8).pack(side="left")
 
         # Etichetă status pentru validare fișier DB
-        self.db_status = ttk.Label(main_container, text="❌ Selectează fișier bază de date", foreground="red")
+        self.db_status = ttk.Label(main_container, text="Selectează fișier bază de date", foreground="red")
         self.db_status.pack(anchor="w", pady=8)
 
-        # Frame pentru butonul Close - Asigură-te că este în partea de jos
+        # Frame pentru butonul Close
         bottom_frame = ttk.Frame(main_container)
         bottom_frame.pack(side="bottom", fill="x", pady=10)
 
-        # Buton Close - MIC în colțul stânga jos
+        # Buton Close
         ttk.Button(
             bottom_frame,
             text="Close",
@@ -104,16 +103,11 @@ class StartupWindow:
 
         # Actualizează eticheta de status
         if db_file and os.path.exists(db_file):
-            self.db_status.config(text="✅ Fișier bază de date selectat", foreground="green")
             self.btn_connect_db.config(state="normal")  # Activează al doilea buton
         elif db_file:
-            self.db_status.config(text="❌ Fișier bază de date nu există", foreground="red")
-            self.btn_connect_db.config(state="disabled")  # Dezactivează al doilea buton
-        else:
-            self.db_status.config(text="❌ Selectează fișier bază de date", foreground="red")
             self.btn_connect_db.config(state="disabled")  # Dezactivează al doilea buton
 
-        # Primul buton este ÎNTOTDEAUNA activat (nu este necesară validare fișier)
+        # Primul buton
         self.btn_create_db.config(state="normal")
 
     def browse_db_file(self):
@@ -127,7 +121,7 @@ class StartupWindow:
 
     def create_new_database(self):
         """Gestionează apăsarea butonului 'Creează bază de date nouă'"""
-        print("Utilizatorul a selectat: Creează bază de date nouă")
+        print("-- Utilizatorul a selectat: Creează bază de date nouă")
         self.choice = "main_app"
         self.root.quit()
         self.root.destroy()

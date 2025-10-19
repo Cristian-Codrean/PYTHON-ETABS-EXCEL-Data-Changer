@@ -1,12 +1,9 @@
 import sqlite3
-import json
 import os
 
 
 def create_database(frame_list):
-    """
-    Creează baza de date pentru elementele de tip frame (grinzi) dintr-o listă.
-    Dacă baza de date există deja în folderul root, va fi rescrisă.
+    """ Creează baza de date pentru elementele de tip frame (grinzi) dintr-o listă.
     """
 
     # Calea către baza de date în folderul root
@@ -15,7 +12,7 @@ def create_database(frame_list):
     # Verifică dacă baza de date există deja și o șterge
     if os.path.exists(db_path):
         os.remove(db_path)
-        print("🗑️ Am șters baza de date veche pentru a o recrea!")
+        print("-- Am șters baza de date veche pentru a o recrea!")
 
     # Conectează-te la baza de date (sau creează-o dacă nu există)
     conn = sqlite3.connect(db_path)
@@ -33,11 +30,11 @@ def create_database(frame_list):
         Material TEXT                       -- Materialul grinzii
     )
     """)
-    print("✅ Am creat tabela Frames cu succes!")
+    print("-- Am creat tabela Frames cu succes!")
 
     # Adaugă fiecare grindă în baza de date
     for frame_name in frame_list:
-        print(f"📝 Procesez grindă: {frame_name}")
+        print(f"-- Procesare grindă: {frame_name}")
 
         try:
             # Încercăm să obținem detaliile despre grindă
@@ -51,28 +48,28 @@ def create_database(frame_list):
             VALUES (?, ?, ?, ?, ?, ?)
             """, (frame_name, label, guid, story, section_name, "Concrete"))
 
-            print(f"✅ Am adăugat grindă {frame_name} în baza de date!")
+            print(f"-- Grinda {frame_name} a fost adaugata în baza de date!")
 
         except Exception as e:
-            print(f"❌ EROARE la procesarea grinzii {frame_name}: {e}")
+            print(f"⮽⮽ EROARE la procesarea grinzii {frame_name}: {e}")
             # Dacă eșuăm, adăugăm doar datele de bază
             cursor.execute("""
             INSERT INTO Frames (UniqueName, Label, GUID) VALUES (?, ?, ?)
             """, (frame_name, f"Label-{frame_name}", f"guid-{frame_name}"))
-            print(f"⚠️ Am adăugat doar date de bază pentru {frame_name}")
+            print(f"⮽⮽️ Sa adăugat doar date de bază pentru {frame_name}")
 
     # Salvează schimbările în baza de date
     conn.commit()
-    print("💾 Am salvat toate schimbările în baza de date!")
+    print("-- Sa salvat toate schimbările în baza de date!")
 
     # Afișează câte rânduri am adăugat
     cursor.execute("SELECT COUNT(*) FROM Frames")
     count = cursor.fetchone()[0]
-    print(f"📊 Am adăugat {count} grinzi în baza de date!")
+    print(f"-- SA adăugat {count} grinzi în baza de date!")
 
     # Închide conexiunea la baza de date
     conn.close()
-    print("🔒 Conexiunea la baza de date a fost închisă!")
+    print("-- Conexiunea la baza de date a fost închisă!")
     return True
 
 

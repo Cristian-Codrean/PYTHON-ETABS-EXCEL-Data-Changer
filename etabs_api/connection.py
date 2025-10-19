@@ -1,6 +1,5 @@
 import comtypes.client
 
-
 def connect_to_etabs():
     """Conexiune simplă directă la ETABS"""
     try:
@@ -9,25 +8,23 @@ def connect_to_etabs():
         helper = helper.QueryInterface(comtypes.gen.ETABSv1.cHelper)
 
         # Obține obiectul ETABS
-        etabs_object = helper.GetObject("CSI.ETABS.API.ETABSObject")
+        myETABSObject = helper.GetObject("CSI.ETABS.API.ETABSObject")
 
-        if etabs_object is None:
-            raise Exception("Nu s-a găsit nicio instanță ETABS rulează")
+        if myETABSObject is None:
+            raise Exception("⮽⮽ Nu s-a găsit nicio instanță ETABS rulează")
 
         # Obține SapModel
-        sap_model = etabs_object.SapModel
+        SapModel = myETABSObject.SapModel
 
-        print("✅ Conectat la instanța ETABS care rulează")
-        return sap_model
+        print("✓✓ Conectat la instanța ETABS care rulează")
+        return SapModel
 
     except Exception as e:
-        print(f"❌ Conexiune ETABS eșuată: {e}")
+        print(f"⮽⮽ Conexiune ETABS eșuată: {e}")
         raise
-
 
 # Variabilă globală pentru a stoca conexiunea
 _sap_model = None
-
 
 def get_sap_model():
     """Obține SapModel - se conectează dacă nu este deja conectat"""
@@ -35,3 +32,8 @@ def get_sap_model():
     if _sap_model is None:
         _sap_model = connect_to_etabs()
     return _sap_model
+
+if __name__ == "__main__":
+    sap_model = connect_to_etabs()
+    sap_model.SetModelIsLocked(False)
+

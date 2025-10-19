@@ -1,9 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import sqlite3
-import os
-import sys
-
 
 class AlternativeWindow:
     def __init__(self, db_file_path):
@@ -154,7 +151,7 @@ class AlternativeWindow:
             tables = cursor.fetchall()
 
             if not tables:
-                messagebox.showinfo("Info", "Nu exista tabele in baza de date.")
+                messagebox.showinfo("Info", "⮽⮽ Nu exista tabele in baza de date.")
                 return
 
             # For simplicity, show data from the first table
@@ -172,7 +169,7 @@ class AlternativeWindow:
             self.show_interactive_table(columns, rows, f"Date din tabelul: {table_name}")
 
         except Exception as e:
-            messagebox.showerror("Eroare", f"Eroare la citirea bazei de date: {e}")
+            messagebox.showerror("⮽⮽ Eroare", f"Eroare la citirea bazei de date: {e}")
 
     def show_interactive_table(self, columns, rows, title):
         """Show an interactive table"""
@@ -209,7 +206,7 @@ class AlternativeWindow:
             h_scrollbar.pack(side='bottom', fill='x')
 
         except Exception as e:
-            messagebox.showerror("Eroare", f"Eroare la afisarea tabelului: {e}")
+            messagebox.showerror("⮽⮽ Eroare", f"Eroare la afisarea tabelului: {e}")
 
     def treeview_sort_column(self, tree, col, reverse):
         """Sort treeview column when clicked"""
@@ -241,19 +238,10 @@ class AlternativeWindow:
 
     def close_window(self):
         """Close the alternative window"""
-        print("Inchidere fereastra baza de date existenta...")
+        print("-- Inchidere fereastra baza de date existenta")
         self.root.destroy()
 
     def run(self):
         """Run the alternative window"""
-        print("Pornire fereastra baza de date existenta...")
+        print("-- Pornire fereastra baza de date existenta")
         self.root.mainloop()
-
-
-# For testing this window independently
-if __name__ == "__main__":
-    # Test with dummy file path
-    window = AlternativeWindow(
-        db_file_path="C:/cale/catre/baza_date.db"
-    )
-    window.run()

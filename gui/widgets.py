@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 
-# Add this import section at the top of widgets.py
+# import section
 try:
     from .startup_window import StartupWindow, AlternativeWindow
 except ImportError:

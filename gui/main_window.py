@@ -14,55 +14,8 @@ sys.path.insert(0, parent_dir)
 # Încercă să importe API-ul ETABS
 try:
     import etabs_api.operations
-
-    print("API ETABS importat cu succes")
 except ImportError as e:
-    print(f"Avertisment import API ETABS: {e}")
-
-
-    # Fallback pentru testare
-    class MockOperations:
-        @staticmethod
-        def get_story_names():
-            return ["B1", "P1", "P2", "P3", "P4", "P5"]
-
-        @staticmethod
-        def get_comb_names():
-            return [f"Combo{i}" for i in range(1, 21)]
-
-        @staticmethod
-        def get_selected_frames_live():
-            import random
-            frames = ["Frame1", "Frame2", "Frame3", "Frame4", "Frame5"]
-            return random.sample(frames, random.randint(1, 3))
-
-        @staticmethod
-        def clear_frame_selection():
-            return True
-
-        @staticmethod
-        def hide_specific_frames(frame_list):
-            print(f"Mock: Ascund frame-uri {frame_list}")
-            return True
-
-        @staticmethod
-        def show_all_frames():
-            return True
-
-        @staticmethod
-        def get_label_and_story(name):
-            return [f"Label-{name}", "Story1"]
-
-        @staticmethod
-        def get_frame_guid(name):
-            return f"mock-guid-{name}"
-
-        @staticmethod
-        def get_section_name(name):
-            return "MockSection"
-
-
-    etabs_api.operations = MockOperations()
+    print(f"⮽⮽ Avertisment de import operatiuni API ETABS: {e}")
 
 # Importă widget-uri
 try:
@@ -78,24 +31,20 @@ except ImportError:
             from widgets import ScenarioFrame, FileSelectionFrame, ControlButtons, SelectionConfirmationDialog, \
                 SimpleSummaryPopup
         except ImportError as e:
-            print(f"Eșuat import widget-uri: {e}")
+            print(f"⮽⮽ Eșuat import widget-uri: {e}")
             sys.exit(1)
 
 # Importă operațiuni Excel direct
 try:
     from excel.operations import copy_excel_file
 except ImportError:
-    def copy_excel_file(template_path, output_path):
-        print(f"Mock: Ar crea Excel din {template_path} în {output_path}")
-        return True
+    print(f"⮽⮽ Avertisment de import operatiuni EXCEL: {e}")
 
 # Importă operațiuni bază de date direct
 try:
     from db.operations import create_database
 except ImportError:
-    def create_database(frame_list):
-        print(f"Mock: Ar crea baza de date cu {len(frame_list)} frame-uri")
-        return True
+    print(f"⮽⮽ Avertisment de import operatiuni Baza de Date : {e}")
 
 
 class DesignApp:
@@ -105,19 +54,18 @@ class DesignApp:
         self.root.resizable(True, True)
 
         # Testează conexiunea ETABS făcând un apel API simplu
-        print("🔗 Testare conexiune ETABS...")
+        print("-- Testare conexiune ETABS")
         try:
-            # Forțează conexiunea prin apelarea unei funcții simple
             from etabs_api.connection import get_sap_model
             sap_model = get_sap_model()
 
             # Testează conexiunea cu un apel simplu
             test_result = sap_model.GetModelFilename()
-            print(f"✅ Conexiune ETABS SUCCES. Model: {test_result}")
+            print(f"✓✓ Conexiune ETABS SUCCES. Model: {test_result}")
 
         except Exception as e:
-            print(f"❌ Test conexiune ETABS eșuat: {e}")
-            print("💡 Te rog asigură-te că ETABS rulează cu un model deschis.")
+            print(f"⮽⮽ Test conexiune ETABS eșuat: {e}")
+            print(">> Te rog asigură-te că ETABS rulează cu un model deschis.")
             self.root.destroy()
             return
 
@@ -126,7 +74,7 @@ class DesignApp:
 
     def initialize_gui(self):
         """Inițializează componentele GUI"""
-        print("Inițializare GUI...")
+        print("-- Inițializare GUI")
 
         # ==================== URĂRIRE STARE ====================
         # Starea butoanelor pentru ambele scenarii
@@ -180,9 +128,9 @@ class DesignApp:
         try:
             stories = etabs_api.operations.get_story_names()
             self.story_dropdown['values'] = stories
-            print(f"Încărcat {len(stories)} etaje din ETABS")
+            print(f"-- Încărcat {len(stories)} etaje din ETABS")
         except Exception as e:
-            print(f"Eroare la încărcarea etajelor: {e}")
+            print(f"⮽⮽ Eroare la încărcarea etajelor: {e}")
             self.story_dropdown['values'] = []
 
         self.story_dropdown.pack(pady=5)
@@ -244,30 +192,29 @@ class DesignApp:
         bottom_frame = ttk.Frame(container)
         bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=20, pady=20)
 
-        # Butonul Create Excel în stânga
+        # Butonul Create Excel
         ttk.Button(bottom_frame, text="Create Excel", command=self.create_excel, width=40).pack(
             side=tk.LEFT, ipadx=20, ipady=10
         )
 
-        # Butonul Close în dreapta
+        # Butonul Close
         ttk.Button(bottom_frame, text="Close", command=self.close_application, width=10).pack(
             side=tk.RIGHT, ipadx=10, ipady=5
         )
 
     def create_excel(self):
         """Creează baza de date locală, apoi copiază Excel și DB în folderul specificat"""
-        print("🎯 Apăsat buton Create Excel")
 
         # Verifică folderul de rezultate
         result_folder = self.file_frame.result_folder_var.get()
         if not result_folder:
-            messagebox.showerror("Eroare", "Selectează un folder de rezultate!")
+            messagebox.showerror("⮽⮽ Eroare", "Selectează un folder de rezultate!")
             return
 
         # Verifică fișierul template
         default_file = self.file_frame.default_file_var.get()
         if not default_file:
-            messagebox.showerror("Eroare", "Selectează un fișier template!")
+            messagebox.showerror("⮽⮽ Eroare", "Selectează un fișier template!")
             return
 
         try:
@@ -281,13 +228,13 @@ class DesignApp:
             db_filename = f"beam_database_{timestamp}.db"
             db_path = os.path.join(result_folder, db_filename)
 
-            print(f"📁 Încep procesul de creare Excel și DB...")
-            print(f"📄 Template Excel: {default_file}")
-            print(f"💾 Destinație Excel: {excel_path}")
-            print(f"🗃️ Destinație DB: {db_path}")
+            print(f"-- Încep procesul de creare Excel și DB...")
+            print(f"-- Template Excel: {default_file}")
+            print(f"-- Destinație Excel: {excel_path}")
+            print(f"-- Destinație DB: {db_path}")
 
             # Pas 1: Creează baza de date LOCALĂ cu toate grinzile selectate
-            print("📦 Creare bază de date locală cu grinzile selectate...")
+            print("-- Creare bază de date locală cu grinzile selectate...")
             all_beams = []
             for group in self.all_beam_groups_a:
                 all_beams.extend(group)
@@ -295,55 +242,53 @@ class DesignApp:
                 all_beams.extend(group)
 
             if not all_beams:
-                messagebox.showerror("Eroare", "Nu sunt grinzi selectate pentru a crea baza de date!")
+                messagebox.showerror("⮽⮽ Eroare", "Nu sunt grinzi selectate pentru a crea baza de date!")
                 return
 
             # Creează baza de date locală
             success = create_database(all_beams)
             if not success:
-                messagebox.showerror("Eroare", "Nu s-a putut crea baza de date locală!")
+                messagebox.showerror("⮽⮽ Eroare", "Nu s-a putut crea baza de date locală!")
                 return
 
-            print("✅ Bază de date locală creată cu succes!")
+            print("✓✓ Bază de date locală creată cu succes!")
 
-            # Pas 2: Aici vor fi adăugate funcțiile pentru popularea bazei de date
-            # cu informații suplimentare din ETABS
-            print("🔧 Populare baza de date cu informații detaliate...")
+            # Pas 2: Functii pentru popularea bazei de date mari
+            print("-- Populare baza de date cu informații detaliate")
             self.populate_database_with_details()
 
-            # Pas 3: Aici vor fi adăugate funcțiile pentru procesarea Excel
-            # care vor folosi baza de date locală
-            print("📊 Procesare fișier Excel cu date din baza de date...")
+            # Pas 3: Functii pentru procesarea excel
+            print("-- Procesare fișier Excel cu date din baza de date locala")
             excel_success = self.process_excel_with_database(default_file, excel_path)
 
             if not excel_success:
-                messagebox.showerror("Eroare", "Nu s-a putut procesa fișierul Excel!")
+                messagebox.showerror("⮽⮽ Eroare", "Nu s-a putut procesa fișierul Excel!")
                 return
 
-            # Pas 4: Copiază baza de date LOCALĂ în folderul de rezultate
+            # Pas 4: Copiază baza de date detailata în folderul de rezultate
             if os.path.exists("frames.db"):
                 try:
                     import shutil
                     shutil.copy2("frames.db", db_path)
-                    print(f"✅ Bază de date copiată în: {db_path}")
+                    print(f"✓✓ Bază de date copiată în: {db_path}")
                 except Exception as e:
-                    print(f"⚠️ Eroare la copierea bazei de date: {e}")
-                    messagebox.showerror("Eroare", f"Eroare la copierea bazei de date: {e}")
+                    print(f"⮽⮽ Eroare la copierea bazei de date: {e}")
+                    messagebox.showerror("⮽⮽ Eroare", f"Eroare la copierea bazei de date: {e}")
                     return
             else:
-                print("❌ Baza de date locală nu există pentru copiere")
-                messagebox.showerror("Eroare", "Baza de date locală nu a fost creată!")
+                print("⮽⮽ Baza de date locală nu există pentru copiere")
+                messagebox.showerror("⮽⮽Eroare", "Baza de date locală nu a fost creată!")
                 return
 
             # Afișează mesaj de succes
-            print(f"✅ Proces completat cu succes!")
-            messagebox.showinfo("Succes",
+            print(f"✓✓ Proces completat cu succes!")
+            messagebox.showinfo("✓✓ Succes",
                                 f"Proces completat cu succes!\n\n"
                                 f"Fișier Excel creat:\n{excel_path}\n\n"
                                 f"Bază de date creată:\n{db_path}")
 
         except Exception as e:
-            print(f"❌ Eroare la crearea Excel-ului: {e}")
+            print(f"⮽⮽ Eroare la crearea Excel-ului: {e}")
             messagebox.showerror("Eroare", f"Eroare: {e}")
 
     def populate_database_with_details(self):
@@ -357,7 +302,7 @@ class DesignApp:
             cursor.execute("SELECT UniqueName FROM Frames")
             beams = cursor.fetchall()
 
-            print(f"🔍 Populez detalii pentru {len(beams)} grinzi...")
+            print(f"-- Populare detalii pentru {len(beams)} grinzi...")
 
             for (beam_name,) in beams:
                 try:
@@ -377,75 +322,75 @@ class DesignApp:
                     WHERE UniqueName = ?
                     """, (label, story, guid, section_name, length, beam_name))
 
-                    print(f"✅ Actualizat: {beam_name}")
+                    print(f"✓✓ Actualizat: {beam_name}")
 
                 except Exception as e:
-                    print(f"⚠️ Eroare la actualizarea grinzii {beam_name}: {e}")
+                    print(f"⮽⮽️ Eroare la actualizarea grinzii {beam_name}: {e}")
                     continue
 
             # Salvează schimbările
             conn.commit()
             conn.close()
-            print("✅ Baza de date a fost populată cu informații detaliate!")
+            print("✓✓ Baza de date a fost populată cu informații detaliate!")
 
         except Exception as e:
-            print(f"❌ Eroare la popularea bazei de date: {e}")
+            print(f"⮽⮽ Eroare la popularea bazei de date: {e}")
 
     def process_excel_with_database(self, template_path, output_path):
         """Procesează fișierul Excel folosind datele din baza de date"""
         try:
             # Pas 1: Copiază template-ul Excel
-            print(f"📋 Copiez template-ul Excel...")
+            print(f"-- Copiiere template-ul Excel...")
             success = copy_excel_file(template_path, output_path)
 
             if not success:
-                print("❌ Eroare la copierea template-ului Excel")
+                print("⮽⮽ Eroare la copierea template-ului Excel")
                 return False
 
             # Pas 2: Aici vor fi adăugate funcțiile pentru popularea Excel-ului
             # cu date din baza de date
-            print(f"📊 Populez Excel-ul cu date din baza de date...")
+            print(f"-- Populare Excel-ul cu date din baza de date...")
 
             # Exemplu simplu - poți extinde această funcție mai târziu
             # pentru a popula fișierul Excel cu date din baza de date
 
-            print(f"✅ Excel procesat cu succes: {output_path}")
+            print(f"✓✓ Excel procesat cu succes: {output_path}")
             return True
 
         except Exception as e:
-            print(f"❌ Eroare la procesarea Excel-ului: {e}")
+            print(f"⮽⮽ Eroare la procesarea Excel-ului: {e}")
             return False
 
     def close_application(self):
         """Închide aplicația și șterge fișierele temporare locale"""
-        print("🔄 Închid aplicația...")
+        print("-- Închidere aplicația...")
 
         # Șterge fișierul temporar JSON
         if os.path.exists("beam_selection_temp.json"):
             try:
                 os.remove("beam_selection_temp.json")
-                print("🗑️ Fișier temporar JSON șters")
+                print("-- Fișier temporar JSON șters")
             except Exception as e:
-                print(f"⚠️ Nu am putut șterge fișierul temporar JSON: {e}")
+                print(f"⮽⮽ Nu am putut șterge fișierul temporar JSON: {e}")
 
         # Șterge baza de date locală
         if os.path.exists("frames.db"):
             try:
                 os.remove("frames.db")
-                print("🗑️ Baza de date locală ștearsă")
+                print("✓✓ Baza de date locală ștearsă")
             except Exception as e:
-                print(f"⚠️ Nu am putut șterge baza de date locală: {e}")
+                print(f"⮽⮽ Nu am putut șterge baza de date locală: {e}")
 
         # Oprește tracking
         if hasattr(self, 'beam_selection_active') and self.beam_selection_active:
             self.stop_beam_selection()
 
-        print("👋 Aplicația se închide...")
+        print("-- Aplicația se închide...")
         self.root.destroy()
 
     def unselect_all(self):
         """Șterge TOATE datele inclusiv baza de date locală"""
-        print("🗑️ Clear All Selection - șterg toate datele...")
+        print("Ștergere selctii inclusiv baza de date locală")
 
         # Șterge grupurile de grinzi
         self.all_beam_groups_a = []
@@ -455,12 +400,12 @@ class DesignApp:
         # Șterge fișierul temporar
         if os.path.exists("beam_selection_temp.json"):
             os.remove("beam_selection_temp.json")
-            print("🗑️ Fișier temporar șters")
+            print("-- Fișier temporar șters")
 
         # Șterge fișierul bazei de date locale
         if os.path.exists("frames.db"):
             os.remove("frames.db")
-            print("🗑️ Baza de date locală ștearsă")
+            print("-- Baza de date locală ștearsă")
 
         # Șterge selecțiile GUI
         self.clear_scenario_a()
@@ -486,21 +431,21 @@ class DesignApp:
         self.update_scenario_buttons("A")
         self.update_scenario_buttons("B")
 
-        print("✅ Toate datele au fost șterse. Gata pentru selecție nouă.")
+        print("✓✓ Toate datele au fost șterse. Gata pentru selecție nouă.")
 
     def check_selection(self):
         """Afișează sumarul tuturor grinzilor selectate"""
-        print("📊 Verificare date grinzi...")
+        print("-- Verificare date grinzi...")
         summary_data = self.get_detailed_summary_data()
         if summary_data and summary_data.get("scenarios"):
             SimpleSummaryPopup(self.root, summary_data)
         else:
-            print("❌ Nu am date de grinzi pentru verificare")
+            print("⮽⮽ Nu am date de grinzi pentru verificare")
 
     def start_beam_selection(self, scenario):
         """Începe procesul de selectare a grinzilor pentru scenariul dat"""
         if self.beam_selection_active:
-            print("Selectarea grinzilor este deja activă!")
+            print("-- Selectarea grinzilor este deja activă!")
             return
 
         self.current_scenario = scenario
@@ -510,8 +455,8 @@ class DesignApp:
         # Șterge orice selecție anterioară în ETABS
         etabs_api.operations.clear_frame_selection()
 
-        print(f"Început selecție grinzi pentru {scenario}")
-        print("Te rog selectează grinzi în ETABS...")
+        print(f"-- Început selecție grinzi pentru {scenario}")
+        print("-- Te rog selectează grinzi în ETABS...")
 
         # Afișează dialogul de confirmare
         self.show_selection_confirmation(scenario, is_first_group=True)
@@ -524,26 +469,51 @@ class DesignApp:
         if self.beam_selection_active:
             self.track_beam_selections()
 
+    # def track_beam_selections(self):
+    #     """Urmărește selecțiile de grinzi în ETABS în timp real"""
+    #     if not self.beam_selection_active:
+    #         return
+    #
+    #     try:
+    #         # Obține frame-urile selectate din ETABS
+    #         selected_frames = etabs_api.operations.get_selected_frames_live()
+    #
+    #         # Actualizează grupul curent cu toate frame-urile selectate
+    #         self.current_beam_group = selected_frames.copy()
+    #
+    #         if selected_frames:
+    #             print(f"-- Grinzi selectate curent ({len(selected_frames)}): {selected_frames}")
+    #
+    #         # Continuă urmărirea
+    #         self.tracking_id = self.root.after(500, self.track_beam_selections)
+    #
+    #     except Exception as e:
+    #         print(f"⮽⮽ Eroare la urmărirea grinzilor: {e}")
+    #         self.tracking_id = self.root.after(500, self.track_beam_selections)
     def track_beam_selections(self):
         """Urmărește selecțiile de grinzi în ETABS în timp real"""
         if not self.beam_selection_active:
             return
 
         try:
-            # Obține frame-urile selectate din ETABS (fără limită acum)
+            # Obține frame-urile selectate din ETABS
             selected_frames = etabs_api.operations.get_selected_frames_live()
 
-            # Actualizează grupul curent cu toate frame-urile selectate
-            self.current_beam_group = selected_frames.copy()
+            # Verifică dacă selecția s-a schimbat față de ultima apelare
+            if set(selected_frames) != set(self.current_beam_group):
+                # Actualizează grupul curent doar dacă s-a schimbat
+                self.current_beam_group = selected_frames.copy()
 
-            if selected_frames:
-                print(f"Grinzi selectate curent ({len(selected_frames)}): {selected_frames}")
+                if selected_frames:
+                    print(f"-- Grinzi selectate curent ({len(selected_frames)}): {selected_frames}")
+                else:
+                    print("-- Nicio grindă selectată")
 
             # Continuă urmărirea
             self.tracking_id = self.root.after(500, self.track_beam_selections)
 
         except Exception as e:
-            print(f"Eroare la urmărirea grinzilor: {e}")
+            print(f"⮽⮽ Eroare la urmărirea grinzilor: {e}")
             self.tracking_id = self.root.after(500, self.track_beam_selections)
 
     def stop_tracking(self):
@@ -556,7 +526,7 @@ class DesignApp:
         """Oprește complet procesul de selectare a grinzilor"""
         self.beam_selection_active = False
         self.stop_tracking()
-        print("Selectarea grinzilor oprită")
+        print("-- Selectarea grinzilor oprită")
 
     def show_selection_confirmation(self, scenario, is_first_group=False):
         """Afișează dialogul de confirmare pentru selecția grinzilor"""
@@ -573,31 +543,31 @@ class DesignApp:
 
     def handle_confirm_continue(self):
         """Gestionează apăsarea butonului 'Confirmă și continuă'"""
-        print("Confirmă și continuă apăsat")
+        print("Confirmă și continuă")
         if self.confirm_and_continue():
             if self.confirmation_dialog:
                 group_count = len(self.all_beam_groups_a if self.current_scenario == "A" else self.all_beam_groups_b)
                 self.confirmation_dialog.update_message(
-                    f"Grupul {group_count} confirmat!\n"
-                    f"Selectează următorul grup de grinzi în ETABS..."
+                    f"-- Grupul {group_count} confirmat!\n"
+                    f"-- Selectează următorul grup de grinzi în ETABS..."
                 )
         else:
             if self.confirmation_dialog:
                 self.confirmation_dialog.update_message(
-                    "EROARE: Nici o grindă selectată!\n"
+                    "⮽⮽ EROARE: Nici o grindă selectată!\n"
                     "Selectează grinzi în ETABS înainte de confirmare."
                 )
 
     def handle_confirm_stop(self):
         """Gestionează apăsarea butonului 'Confirmă și oprește'"""
-        print("Confirmă și oprește apăsat")
+        print("Confirmă și oprește")
         if self.confirm_and_stop():
             if self.confirmation_dialog:
                 self.confirmation_dialog.close_dialog()
 
     def handle_cancel(self):
         """Gestionează apăsarea butonului 'Anulează'"""
-        print("Anulează apăsat")
+        print("Anulează")
         if self.cancel_selection():
             if self.confirmation_dialog:
                 self.confirmation_dialog.close_dialog()
@@ -614,7 +584,7 @@ class DesignApp:
                 current_groups = self.all_beam_groups_b
 
             print(
-                f"Grupul {len(current_groups)} confirmat pentru scenariul {self.current_scenario}: {self.current_beam_group}")
+                f"-- Grupul {len(current_groups)} confirmat pentru scenariul {self.current_scenario}: {self.current_beam_group}")
 
             # Salvează în fișier temporar
             self.save_temp_data(self.current_scenario, current_groups)
@@ -622,18 +592,18 @@ class DesignApp:
             # Ascunde grinzile
             success = etabs_api.operations.hide_specific_frames(self.current_beam_group)
             if success:
-                print("Grinzi ascunse cu succes în ETABS")
+                print("-- Grinzi ascunse cu succes în ETABS")
             else:
-                print("Metoda de ascundere a eșuat")
+                print("⮽⮽ Metoda de ascundere a eșuat")
 
             # Șterge selecția pentru următorul grup
             etabs_api.operations.clear_frame_selection()
             self.current_beam_group = []
 
-            print("Gata pentru selecția următorului grup de grinzi...")
+            print("-- Gata pentru selecția următorului grup de grinzi...")
             return True
         else:
-            print("Nu sunt grinzi selectate în grupul curent!")
+            print("-- Nu sunt grinzi selectate în grupul curent!")
             return False
 
     def confirm_and_stop(self):
@@ -647,7 +617,7 @@ class DesignApp:
                 self.all_beam_groups_b.append(self.current_beam_group.copy())
                 current_groups = self.all_beam_groups_b
 
-            print(f"Grupul final confirmat pentru scenariul {self.current_scenario}")
+            print(f"-- Grupul final confirmat pentru scenariul {self.current_scenario}")
 
             # Salvează în fișier temporar
             self.save_temp_data(self.current_scenario, current_groups)
@@ -662,7 +632,7 @@ class DesignApp:
 
     def cancel_selection(self):
         """Anulează selecția curentă fără salvare"""
-        print("Selecție anulată")
+        print("-- Selecție anulată")
 
         # Șterge selecția în ETABS
         etabs_api.operations.clear_frame_selection()
@@ -725,7 +695,7 @@ class DesignApp:
     def update_etaj_value(self, event=None):
         """Actualizează valoarea etajului când se schimbă dropdown-ul"""
         self.etaj_value = self.story_var.get()
-        print(f"Etaj selectat: {self.etaj_value}")
+        print(f"-- Etaj selectat: {self.etaj_value}")
 
     def update_selected_combinations(self):
         """Actualizează combinațiile selectate din listbox-uri"""
@@ -806,7 +776,7 @@ class DesignApp:
 
         with open("beam_selection_temp.json", 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-        print(f"💾 Date salvate pentru scenariul {scenario}")
+        print(f"-- Date salvate pentru scenariul {scenario}")
 
     def get_detailed_summary_data(self):
         """Returnează datele detaliate pentru verificare"""

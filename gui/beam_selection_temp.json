@@ -1,0 +1,28 @@
+{
+  "timestamp": "2025-10-19T14:55:53.237073",
+  "scenario_a": {
+    "beam_groups": [
+      [
+        "1602",
+        "1611",
+        "1612",
+        "1615",
+        "1616",
+        "1619",
+        "1622"
+      ]
+    ],
+    "rezistente_type": "Medii",
+    "etaj": "Parter - 43.50",
+    "selected_combinations_upper": [],
+    "selected_combinations_lower": [],
+    "button_states": {
+      "DCL": false,
+      "DCM": false,
+      "DCH": false,
+      "Secundare": true,
+      "Dir X": false,
+      "Dir Y": false
+    }
+  }
+}
