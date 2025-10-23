@@ -89,11 +89,11 @@ def frame_group(db_path="frames.db"):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        # Get all frames from database with ALL available columns
+        # Get all frames from database with UPDATED columns (using SelectedStory)
         cursor.execute("""
             SELECT id, UniqueName, Label, GroupID, OrderID, Scenario,
                    Rezistente, DCL, DCM, DCH, Secundare, DirX, DirY,
-                   CombUpper, CombLower, Etaj
+                   CombUpper, CombLower, SelectedStory
             FROM Frames 
             ORDER BY Scenario, GroupID, OrderID
         """)
@@ -132,7 +132,7 @@ def frame_group(db_path="frames.db"):
                         "dir_y": beam[12],  # DirY
                         "comb_upper": beam[13],  # CombUpper
                         "comb_lower": beam[14],  # CombLower
-                        "etaj": beam[15]  # Etaj
+                        "etaj": beam[15]  # SelectedStory (folosit ca "etaj" pentru compatibilitate)
                     }
                 }
 

@@ -388,3 +388,79 @@ def get_section_properties(frame_name):
     except Exception as e:
         print(f"Eroare la obținerea proprietăților secțiunii pentru {frame_name}: {e}")
         return "N/A"
+
+# Add these placeholder functions to etabs_api/operations.py
+
+def get_joint_names(frame_name):
+    """Placeholder function - returns joint names"""
+    return {"i": "N/A", "j": "N/A"}
+
+# def get_section_properties(frame_name):
+#     """Placeholder function - returns section properties"""
+#     return {
+#         "section_type": "N/A", "depth": 0.0, "width": 0.0, "beff": 0.0,
+#         "flange_thickness": 0.0, "ceff_top": 0.0, "ceff_bottom": 0.0
+#     }
+
+def get_steel_properties(frame_name):
+    """Placeholder function - returns steel properties"""
+    return {
+        "longitudinal": {"fyk": 0.0, "fuk": 0.0, "fym": 0.0, "fum": 0.0},
+        "transversal": {"fyk": 0.0, "fuk": 0.0, "fym": 0.0, "fum": 0.0}
+    }
+
+def get_design_results(frame_name):
+    """Placeholder function - returns design results"""
+    default_dict = {"i": 0.0, "mid": 0.0, "j": 0.0}
+    return {
+        "asl_req_gf": default_dict.copy(),
+        "asl_req_gs": default_dict.copy(),
+        "asl_eff": default_dict.copy(),
+        "asl_eff_plate": default_dict.copy(),
+        "asl_supp": default_dict.copy(),
+        "med_gf": default_dict.copy(),
+        "med_gs": default_dict.copy(),
+        "ved_gf": default_dict.copy(),
+        "ved_gs": default_dict.copy(),
+        "ast_eff": default_dict.copy(),
+        "ast_supp": default_dict.copy(),
+        "ast_req_gf": default_dict.copy(),
+        "ast_req_gs": default_dict.copy()
+    }
+
+def get_capacity_results(frame_name):
+    """Placeholder function - returns capacity results"""
+    default_dict = {"i": 0.0, "j": 0.0}
+    return {
+        "mrd_poz": default_dict.copy(),
+        "mrd_neg": default_dict.copy(),
+        "phi_max_neg": default_dict.copy(),
+        "phi_cap_neg": default_dict.copy(),
+        "phi_max_poz": default_dict.copy(),
+        "phi_cap_poz": default_dict.copy()
+    }
+
+def get_column_connections(frame_name):
+    """Placeholder function - returns column connection data"""
+    default_release = {"Nx": 0.0, "V2": 0.0, "V3": 0.0, "T": 0.0, "M22": 0.0, "M33": 0.0}
+    default_name = {"i": "N/A", "j": "N/A"}
+    return {
+        "top_column_mrd": {"i": 0.0, "j": 0.0},
+        "bott_column_mrd": {"i": 0.0, "j": 0.0},
+        "i_top_column_releases": default_release.copy(),
+        "i_bott_column_releases": default_release.copy(),
+        "j_top_column_releases": default_release.copy(),
+        "j_bott_column_releases": default_release.copy(),
+        "top_col_name": default_name.copy(),
+        "bott_col_name": default_name.copy()
+    }
+
+def get_checks(frame_name):
+    """Placeholder function - returns check results"""
+    default_dict = {"i": "N/A", "mid": "N/A", "j": "N/A"}
+    return {
+        "node_check": {"i": "N/A", "j": "N/A"},
+        "top_fiber_check": default_dict.copy(),
+        "bott_fiber_check": default_dict.copy(),
+        "shear_check": default_dict.copy()
+    }
