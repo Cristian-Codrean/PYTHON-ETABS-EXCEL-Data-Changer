@@ -1,61 +1,8 @@
+import math
 # Importă funcția de conexiune
 from etabs_api.connection import get_sap_model
 # Get sap_model at module level for all functions to use
 sap_model = get_sap_model()
-
-def hide_specific_frames(frame_list):
-    """Ascunde frame-urile specificate folosind funcția Make Objects Invisible din ETABS"""
-    sap_model = get_sap_model()
-    if not frame_list:
-        print("-- Nu sunt frame-uri de ascuns")
-        return True
-
-    print(f"-- Încerc să ascund {len(frame_list)} frame-uri: {frame_list}")
-
-    try:
-        # Mai întâi, șterge orice selecție existentă
-        sap_model.SelectObj.ClearSelection()
-
-        # Selectează toate frame-urile pe care vrem să le ascundem
-        selected_count = 0
-        for frame_name in frame_list:
-            try:
-                ret = sap_model.FrameObj.SetSelected(frame_name, True)
-                if ret == 0:
-                    selected_count += 1
-                else:
-                    print(f"Avertisment:⮽⮽ Nu sa putut selecta frame-ul {frame_name}, eroare: {ret}")
-            except Exception as e:
-                print(f"⮽⮽ Eroare la selectarea frame-ului {frame_name}: {e}")
-
-        print(f"-- Selectat {selected_count} frame-uri pentru ascundere")
-
-        if selected_count > 0:
-            # Metoda 1: Încearcă să folosească interfața Display pentru a ascunde obiecte
-            try:
-                # Obține toate obiectele selectate și le ascunde folosind opțiuni de display
-                ret = sap_model.Display.SetObjectSelected(False)  # Deselectează toate
-                if ret == 0:
-                    print(f"-- Ascuns cu succes {selected_count} frame-uri")
-                    return True
-                else:
-                    print(f"⮽⮽ Display.SetObjectSelected a returnat eroare: {ret}")
-            except Exception as e:
-                print(f"⮽⮽ Metoda Display a eșuat: {e}")
-
-        # Șterge selecția indiferent de rezultat
-        sap_model.SelectObj.ClearSelection()
-        return selected_count > 0
-
-    except Exception as e:
-        print(f"⮽⮽ Eroare în hide_specific_frames: {e}")
-        # Șterge selecția la eroare
-        try:
-            sap_model.SelectObj.ClearSelection()
-        except:
-            pass
-        return False
-
 
 def show_all_frames():
     """Arată toate frame-urile din model"""
@@ -156,29 +103,33 @@ def get_section_name(frame_name):
         ret = sap_model.FrameObj.GetSection(frame_name)
         print(f"-- GetSection pentru {frame_name}: ret={ret}")
 
-        if ret[0] == 0:
-            section_name = ret[1]
+        if ret[2] == 0:
+            section_name = ret[0]
             print(f"-- Secțiune obținută pentru {frame_name}: {section_name}")
             return section_name
-        else:
-            # În ETABS, uneori returnează numele secțiunii direct în ret[0]
-            if isinstance(ret[0], str) and ret[0]:
-                print(f"-- Secțiune obținută (alternativ) pentru {frame_name}: {ret[0]}")
-                return ret[0]
-            else:
-                print(f"⮽⮽ Eroare GetSection pentru {frame_name}: cod {ret[0]}")
-                return "N/A"
     except Exception as e:
         print(f"⮽⮽ Eroare la obținerea numelui secțiunii pentru {frame_name}: {e}")
         return "N/A"
 
-def get_prop_modifiers(name):
+def get_model_modifiers(name):
     SapModel = get_sap_model()
-    ret, modifiers = SapModel.FrameObj.GetModifiers(name)
+    modifiers, ret = SapModel.FrameObj.GetModifiers(name)
     if ret != 0:
         return None
-    keys = ["Area", "As2", "As3", "Torsion", "I22", "I33", "Mass", "Weight"]
+    keys = ["A", "Av2", "Av3", "T", "M2", "M3", "M", "W"]
     return dict(zip(keys, modifiers))
+
+def get_section_modifiers(sec_name):
+    """Returneaza overwriteurile pentru sectiunea unui elem. de tip frame (input = frame unique name"""
+    try:
+        SapModel = get_sap_model()
+        modifiers, ret = SapModel.PropFrame.GetModifiers(sec_name)
+        if ret == 0:
+            keys = ["A", "Av2", "Av3", "T", "M2", "M3", "M", "W"]
+            return dict(zip(keys, modifiers))
+    except Exception as e:
+        print(f"⮽⮽ Eroare la obținerea modificatorilor de sectiune {sec_name}: {e}")
+        return None
 
 def get_end_releases(name):
     SapModel = get_sap_model()
@@ -241,10 +192,15 @@ def get_spandrel(name):
     ret, spandrel = SapModel.FrameObj.GetSpandrel(name)
     return spandrel if ret == 0 else None
 
-def get_material_overwrite(name):
-    SapModel = get_sap_model()
-    ret, material = SapModel.FrameObj.GetMaterialOverwrite(name)
-    return material if ret == 0 else None
+def get_material_overwrite(sect_name):
+    """Returneaza material overwrite pt un elem. de tip frame (input = frame unique name"""
+    try:
+        SapModel = get_sap_model()
+        material, ret = SapModel.FrameObj.GetMaterialOverwrite(sect_name)
+        return material
+    except Exception as e:
+        print(f"⮽⮽ Eroare la extragerea overwriteului de material pt {sect_name} : {e}")
+        return None
 
 def get_rebar_ratio(name):
     SapModel = get_sap_model()
@@ -264,101 +220,36 @@ def get_groups(name):
     return {"Count": number, "Names": group_names}
 
 
-def get_section_material(frame_name):
-    """Obține numele materialului pentru secțiunea unei grinzi"""
-    try:
-        # Obține numele secțiunii
-        section_name = get_section_name(frame_name)
-        if section_name == "N/A":
-            return "N/A"
-
-        print(f"-- Obținere material pentru secțiunea: {section_name}")
-
-        # Încearcă să obțină materialul direct folosind GetMaterial
-        ret = sap_model.PropFrame.GetMaterial(section_name)
-        print(f"-- GetMaterial pentru {section_name}: ret={ret}")
-
-        if ret[0] == 0:
-            material_name = ret[1]
-            print(f"-- Material obținut direct: {material_name}")
-            return material_name
-
-        # Dacă direct nu funcționează, încearcă pentru diferite tipuri de secțiuni
-        ret = sap_model.PropFrame.GetRectangle(section_name)
-        if ret[0] == 0:
-            material_name = ret[3]
-            print(f"-- Material pentru secțiune rectangulară: {material_name}")
-            return material_name
-
-        ret = sap_model.PropFrame.GetISection(section_name)
-        if ret[0] == 0:
-            material_name = ret[8]
-            print(f"-- Material pentru secțiune I: {material_name}")
-            return material_name
-
-        ret = sap_model.PropFrame.GetTube(section_name)
-        if ret[0] == 0:
-            material_name = ret[6]
-            print(f"-- Material pentru secțiune tub: {material_name}")
-            return material_name
-
-        ret = sap_model.PropFrame.GetCircle(section_name)
-        if ret[0] == 0:
-            material_name = ret[3]
-            print(f"-- Material pentru secțiune circulară: {material_name}")
-            return material_name
-
-        print(f"⮽⮽ Nu s-a putut determina materialul pentru secțiunea {section_name}")
-        return "N/A"
-
-    except Exception as e:
-        print(f"⮽⮽ Eroare la obținerea materialului pentru {frame_name}: {e}")
-        return "N/A"
-
+# def get_section_material(frame_name):
+#     """Obține numele materialului pentru secțiunea unei grinzi"""
+#     try:
+#         # Obține numele secțiunii
+#         section_name = sap_model.FrameObj.GetSection(frame_name)[0]
+#         ret = sap_model.cPropFrame.GetMaterial(section_name)
+#         if section_name != None and ret[1] == 0:
+#             return ret[0]
+#     except Exception as e:
+#         print(f"⮽⮽ Eroare la obținerea materialului pentru {frame_name}: {e}")
+#         return None
+#
+# # rett = get_section_material("GT 30x70")
+# # print(rett)
+# section_name = sap_model.cPropFrame.GetMaterial("GT 30X70")
+# print(section_name)
 
 def get_frame_length(frame_name):
     """Obține lungimea unei grinzi"""
     try:
-        ret = sap_model.FrameObj.GetLength(frame_name)
-        print(f"-- GetLength pentru {frame_name}: ret={ret}")
-
-        if ret[0] == 0:
-            length = ret[1]
-            print(f"-- Lungime obținută pentru {frame_name}: {length:.3f}")
-            return length
-        else:
-            print(f"⮽⮽ Eroare GetLength pentru {frame_name}: cod {ret[0]}")
-            # Încearcă o metodă alternativă pentru a obține lungimea
-            return get_frame_length_alternative(frame_name)
+        # Get start and end joints
+        point_i, point_j = sap_model.FrameObj.GetPoints(frame_name)[0:2]
+        # Get coordinates for each joint
+        xi, yi, zi = sap_model.PointObj.GetCoordCartesian(point_i)[0:3]
+        xj, yj, zj = sap_model.PointObj.GetCoordCartesian(point_j)[0:3]
+        # Calculate length
+        length = math.sqrt((xj - xi) ** 2 + (yj - yi) ** 2 + (zj - zi) ** 2)
+        return length
     except Exception as e:
         print(f"⮽⮽ Eroare la obținerea lungimii pentru {frame_name}: {e}")
-        return 0.0
-
-
-def get_frame_length_alternative(frame_name):
-    """Metodă alternativă pentru a obține lungimea unei grinzi"""
-    try:
-        # Obține coordonatele punctelor de capăt
-        ret = sap_model.FrameObj.GetPoints(frame_name)
-        if ret[0] == 0:
-            point1, point2 = ret[1], ret[2]
-            # Obține coordonatele punctelor
-            ret1 = sap_model.PointObj.GetCoordCartesian(point1)
-            ret2 = sap_model.PointObj.GetCoordCartesian(point2)
-
-            if ret1[0] == 0 and ret2[0] == 0:
-                x1, y1, z1 = ret1[1], ret1[2], ret1[3]
-                x2, y2, z2 = ret2[1], ret2[2], ret2[3]
-                # Calculează distanța euclidiană
-                length = ((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2) ** 0.5
-                print(f"-- Lungime calculată pentru {frame_name}: {length:.3f}")
-                return length
-
-        print(f"⮽⮽ Nu s-a putut calcula lungimea pentru {frame_name}")
-        return 0.0
-
-    except Exception as e:
-        print(f"⮽⮽ Eroare la calculul alternativ al lungimii pentru {frame_name}: {e}")
         return 0.0
 
 def get_section_properties(frame_name):
@@ -391,16 +282,26 @@ def get_section_properties(frame_name):
 
 # Add these placeholder functions to etabs_api/operations.py
 
-def get_joint_names(frame_name):
-    """Placeholder function - returns joint names"""
-    return {"i": "N/A", "j": "N/A"}
+def get_i_joint_name(frame_name):
+    """Returneaza numele jointului i (input = frame unique name)"""
+    try:
+        # Get start and end joints
+        point_i, point_j = sap_model.FrameObj.GetPoints(frame_name)[0:2]
+        return {"i":point_i}
+    except Exception as e:
+        print(f"""⮽⮽ Eroare la obținerea numelui jointului "i" pentru {frame_name}: {e}""")
+        return {"i":None}
 
-# def get_section_properties(frame_name):
-#     """Placeholder function - returns section properties"""
-#     return {
-#         "section_type": "N/A", "depth": 0.0, "width": 0.0, "beff": 0.0,
-#         "flange_thickness": 0.0, "ceff_top": 0.0, "ceff_bottom": 0.0
-#     }
+def get_j_joint_name(frame_name):
+    """Returneaza numele jointului j (input = frame unique name)"""
+    try:
+        # Get start and end joints
+        point_i, point_j = sap_model.FrameObj.GetPoints(frame_name)[0:2]
+        return {"j":point_j}
+    except Exception as e:
+        print(f"""⮽⮽ Eroare la obținerea numelui jointului "j" pentru {frame_name}: {e}""")
+        return {"j":None}
+
 
 def get_steel_properties(frame_name):
     """Placeholder function - returns steel properties"""

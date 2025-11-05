@@ -52,7 +52,7 @@ except ImportError:
 class DesignApp:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Design Comparison Tool")
+        self.root.title("Beam Design by CCO")
         self.root.resizable(True, True)
 
         # Testează conexiunea ETABS făcând un apel API simplu
@@ -578,15 +578,15 @@ class DesignApp:
             # Salvează în fișier temporar CU STARE CAPTURATĂ LA ÎNCEPUT
             self.save_temp_data_with_selection_state(self.current_scenario, current_groups, selection_state)
 
-            # Ascunde grinzile
-            success = etabs_api.operations.hide_specific_frames(self.current_beam_group)
-            if success:
-                print("-- Grinzi ascunse cu succes în ETABS")
-            else:
-                print("⮽⮽ Metoda de ascundere a eșuat")
-
-            # Șterge selecția pentru următorul grup
-            etabs_api.operations.clear_frame_selection()
+            # # Ascunde grinzile
+            # success = etabs_api.operations.hide_specific_frames(self.current_beam_group)
+            # if success:
+            #     print("-- Grinzi ascunse cu succes în ETABS")
+            # else:
+            #     print("⮽⮽ Metoda de ascundere a eșuat")
+            #
+            # # Șterge selecția pentru următorul grup
+            # etabs_api.operations.clear_frame_selection()
             self.current_beam_group = []
 
             print("-- Gata pentru selecția următorului grup de grinzi...")
@@ -620,8 +620,8 @@ class DesignApp:
             # Salvează în fișier temporar CU STARE CAPTURATĂ LA ÎNCEPUT
             self.save_temp_data_with_selection_state(self.current_scenario, current_groups, selection_state)
 
-            # Ascunde grinzile
-            etabs_api.operations.hide_specific_frames(self.current_beam_group)
+            # # Ascunde grinzile
+            # etabs_api.operations.hide_specific_frames(self.current_beam_group)
 
         # Șterge selecția și oprește
         etabs_api.operations.clear_frame_selection()
